@@ -597,14 +597,18 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
   };
 
   const handleOpenLocal = () => {
-    // Update URL to trigger Iframe view via Effect
-    // This allows browser back button to work naturally
+    const url = safeExternalUrl(demoProject?.demoUrl);
+    if (!url) {
+      toast.error('Invalid demo URL.');
+      return;
+    }
+
+    // Update URL to trigger Iframe view via Effect.
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev);
       if (demoProject) newParams.set('demo', demoProject._id);
       return newParams;
     });
-    // Optimistically update state
     setViewMode('IFRAME');
     setIframeLoading(true);
   };
@@ -1369,6 +1373,7 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
 
       {viewMode === 'IFRAME' &&
         demoProject &&
+        safeDemoUrl &&
         createPortal(
           <div className="fixed inset-0 z-[10000] flex flex-col bg-slate-900 animate-fade-in">
             {/* Header */}
