@@ -138,16 +138,13 @@ export const featureService = {
     onChunk: (text: string) => void,
     images?: string[] | null
   ): Promise<void> => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) throw new Error('No auth token');
-
     try {
       // Updated endpoint path to include /ai prefix
       const response = await fetch(`${API_BASE_URL}/ai/ask-life/stream`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
-          'Content-Type': 'application/json',
-          'x-auth-token': token
+          'Content-Type': 'application/json'
         },
         // We pass the prompt, history, and images (array) to the streaming endpoint.
         body: JSON.stringify({ prompt, history, images })
@@ -464,12 +461,8 @@ export const featureService = {
   },
 
   getR2ObjectBlob: async (key: string): Promise<Blob> => {
-    const token = localStorage.getItem('auth_token');
-    const headers: HeadersInit = {};
-    if (token) headers['x-auth-token'] = token;
-
     const response = await fetch(`${API_BASE_URL}/upload/object?key=${encodeURIComponent(key)}`, {
-      headers
+      credentials: 'include'
     });
 
     if (!response.ok) {
@@ -582,13 +575,9 @@ export const featureService = {
     // Append File LAST
     formData.append('files', file);
 
-    const token = localStorage.getItem('auth_token');
-    const headers: HeadersInit = {};
-    if (token) headers['x-auth-token'] = token;
-
     const response = await fetch(`${API_BASE_URL}/upload`, {
       method: 'POST',
-      headers,
+      credentials: 'include',
       body: formData
     });
 
@@ -629,11 +618,10 @@ export const featureService = {
 
   // NEW: Get Backup Stream (Returns raw Response)
   getBackupStream: async (): Promise<Response> => {
-    const token = localStorage.getItem('auth_token');
     const response = await fetch(`${API_BASE_URL}/backup/database`, {
       method: 'POST',
+      credentials: 'include',
       headers: {
-        'x-auth-token': token || '',
         'Content-Type': 'application/json'
       }
     });

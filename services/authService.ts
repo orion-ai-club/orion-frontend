@@ -38,9 +38,6 @@ export const authService = {
       method: 'POST',
       body: JSON.stringify({ email, password })
     });
-    if (response.token) {
-      localStorage.setItem('auth_token', response.token);
-    }
     toast.success('Welcome back!');
     return response;
   },
@@ -62,9 +59,6 @@ export const authService = {
         phone
       })
     });
-    if (response.token) {
-      localStorage.setItem('auth_token', response.token);
-    }
     toast.success('Registration successful! Welcome aboard.');
     return response;
   },
@@ -106,9 +100,6 @@ export const authService = {
       method: 'POST',
       body: JSON.stringify({ identifier, code })
     });
-    if (response.token) {
-      localStorage.setItem('auth_token', response.token);
-    }
     return response;
   },
 
@@ -136,9 +127,6 @@ export const authService = {
       method: 'POST',
       body: JSON.stringify({ idToken })
     });
-    if (response.token) {
-      localStorage.setItem('auth_token', response.token);
-    }
     return response;
   },
 
@@ -171,13 +159,12 @@ export const authService = {
   },
 
   backupLogs: async (type?: string): Promise<void> => {
-    const token = localStorage.getItem('auth_token');
     const urlEndpoint = type ? `${API_BASE_URL}/backup?type=${type}` : `${API_BASE_URL}/backup`;
 
     const response = await fetch(urlEndpoint, {
       method: 'GET',
+      credentials: 'include',
       headers: {
-        'x-auth-token': token || '',
         'Content-Type': 'application/json'
       }
     });
@@ -206,21 +193,25 @@ export const authService = {
     toast.success('Database backup uploaded to Cloud successfully!');
   },
 
-  getCurrentUser: async (): Promise<User> => {
-    try {
-      return await fetchClient<User>('/users/profile');
-    } catch (error) {
-      console.warn('Auth check failed:', error);
-      localStorage.removeItem('auth_token'); // Ensure clean state
-      throw error;
+  getCurrentUser: async (): Promise<User | null> => {
+    const response = await fetch(`${API_BASE_URL}/users/profile`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (response.status === 401) return null;
+    if (!response.ok) {
+      throw new Error(`Auth check failed with status ${response.status}`);
     }
+
+    return (await response.json()) as User;
   },
 
   logout: async () => {
     try {
       await fetchClient('/users/logout', { method: 'POST' }).catch(() => {});
     } finally {
-      localStorage.removeItem('auth_token');
       localStorage.removeItem('googleInfo');
       toast.info('You have been logged out.');
     }

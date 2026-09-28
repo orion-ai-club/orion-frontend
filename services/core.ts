@@ -35,14 +35,12 @@ export async function fetchEventStream<T>(
     ...options.headers
   };
 
-  const token = localStorage.getItem('auth_token');
-  if (token) (headers as any)['x-auth-token'] = token;
-
   const googleInfo = localStorage.getItem('googleInfo');
   if (googleInfo) (headers as any)['x-google-auth'] = googleInfo;
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
+    credentials: 'include',
     headers
   });
 
@@ -132,10 +130,6 @@ export async function fetchClient<T>(endpoint: string, options: RequestInit = {}
       ...options.headers
     };
 
-    // 自动注入 Auth Token
-    const token = localStorage.getItem('auth_token');
-    if (token) (headers as any)['x-auth-token'] = token;
-
     // 自动注入 Google Auth Info (如果有)
     const googleInfo = localStorage.getItem('googleInfo');
     if (googleInfo) (headers as any)['x-google-auth'] = googleInfo;
@@ -143,6 +137,7 @@ export async function fetchClient<T>(endpoint: string, options: RequestInit = {}
     // 🔥 发起请求：直接使用确定的 API_BASE_URL
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
+      credentials: 'include',
       signal: controller.signal,
       headers
     });
@@ -166,7 +161,6 @@ export async function fetchClient<T>(endpoint: string, options: RequestInit = {}
 
       // 特殊状态码处理：401 未授权 (Token 过期或无效)
       if (response.status === 401) {
-        localStorage.removeItem('auth_token');
         localStorage.removeItem('googleInfo');
         // 触发全局事件，让 UI (如 Header) 更新状态
         window.dispatchEvent(new Event('auth:logout'));
