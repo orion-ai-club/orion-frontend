@@ -6,7 +6,7 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 
 export default [
-  { ignores: ['dist/**', 'node_modules/**', 'test-results/**', 'public/sw.js'] },
+  { ignores: ['dist/**', 'node_modules/**', '.cache/**', 'test-results/**', 'public/sw.js'] },
   {
     files: ['**/*.{js,jsx,mjs,cjs,ts,tsx}'],
     languageOptions: {
