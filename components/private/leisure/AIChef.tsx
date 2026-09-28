@@ -5,6 +5,7 @@ import { apiService } from '../../../services/api';
 import { Menu, SmartMenuResponse } from '../../../types';
 import { toast } from '../../Toast';
 import { DeleteModal } from '../../DeleteModal';
+import { sanitizeUntrustedHtml } from '../../../utils/security';
 
 // Wheel Colors
 const WHEEL_COLORS = [
@@ -441,7 +442,9 @@ export const AIChef: React.FC = () => {
           <h4 className="text-[10px] font-bold uppercase text-slate-400 mb-2">Instructions</h4>
           <div
             className="space-y-2 text-sm text-slate-700 leading-loose [&>p]:mb-2 [&>img]:rounded-lg [&>img]:my-2 [&>img]:max-h-60 [&>img]:object-contain"
-            dangerouslySetInnerHTML={{ __html: activeExternalRecipe.steps || 'No steps provided.' }}
+            dangerouslySetInnerHTML={{
+              __html: sanitizeUntrustedHtml(activeExternalRecipe.steps || 'No steps provided.')
+            }}
           />
         </div>
 
