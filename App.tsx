@@ -325,30 +325,32 @@ const App: React.FC = () => {
 
   // Socket Connection
   useEffect(() => {
-    if (user && !socket) {
-      const newSocket = io(SOCKET_URL);
-      newSocket.on('connect', () => {
-        newSocket.emit('USER_CONNECTED', {
-          name: user.displayName,
-          id: user._id,
-          email: user.email,
-          photoURL: user.photoURL
-        });
-      });
-      newSocket.on('NEW_NOTIFICATION', (data: any) => {
-        if (data.type === 'private_message') {
-          toast.info(data.content);
-        }
-        window.dispatchEvent(new CustomEvent('sys_notification', { detail: data }));
-      });
-      setSocket(newSocket);
-    } else if (!user && socket) {
-      socket.emit('LOGOUT');
-      socket.disconnect();
+    if (!user) {
       setSocket(null);
+      return;
     }
+
+    const newSocket = io(SOCKET_URL);
+    newSocket.on('connect', () => {
+      newSocket.emit('USER_CONNECTED', {
+        name: user.displayName,
+        id: user._id,
+        email: user.email,
+        photoURL: user.photoURL
+      });
+    });
+    newSocket.on('NEW_NOTIFICATION', (data: any) => {
+      if (data.type === 'private_message') {
+        toast.info(data.content);
+      }
+      window.dispatchEvent(new CustomEvent('sys_notification', { detail: data }));
+    });
+
+    setSocket(newSocket);
+
     return () => {
-      if (socket) socket.disconnect();
+      newSocket.removeAllListeners();
+      newSocket.disconnect();
     };
   }, [user]);
 

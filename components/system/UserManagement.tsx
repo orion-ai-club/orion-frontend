@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { apiService } from '../../services/api';
 import { User, PaginationData, Role, Permission } from '../../types';
@@ -26,41 +26,31 @@ export const UserManagement: React.FC = () => {
   const [isProcessingVip, setIsProcessingVip] = useState(false);
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
 
-  useEffect(() => {
-    fetchUsers(1);
-    fetchRolesAndPermissions();
-  }, []);
+  const fetchUsers = useCallback(
+    async (p: number) => {
+      setLoading(true);
+      try {
+        const { data, pagination: pager } = await apiService.getUsers(
+          p,
+          25,
+          search,
+          'role',
+          'desc'
+        );
+        setUserList(data);
+        setPagination(pager);
+        setPage(p);
+      } catch (e) {
+        console.error(e);
+        toast.error('Failed to load users');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [search]
+  );
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchUsers(1);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  useEffect(() => {
-    if (targetUser) {
-      setSelectedRole(targetUser.role || 'user');
-      setSelectedPermissions(targetUser.permissions || []);
-    }
-  }, [targetUser]);
-
-  const fetchUsers = async (p: number) => {
-    setLoading(true);
-    try {
-      const { data, pagination: pager } = await apiService.getUsers(p, 25, search, 'role', 'desc');
-      setUserList(data);
-      setPagination(pager);
-      setPage(p);
-    } catch (e) {
-      console.error(e);
-      toast.error('Failed to load users');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchRolesAndPermissions = async () => {
+  const fetchRolesAndPermissions = useCallback(async () => {
     try {
       const [roles, perms] = await Promise.all([
         apiService.getAllRoles(),
@@ -71,7 +61,26 @@ export const UserManagement: React.FC = () => {
     } catch (e) {
       console.error(e);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void fetchRolesAndPermissions();
+  }, [fetchRolesAndPermissions]);
+
+  useEffect(() => {
+    const delay = search ? 500 : 0;
+    const timer = setTimeout(() => {
+      void fetchUsers(1);
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [fetchUsers, search]);
+
+  useEffect(() => {
+    if (targetUser) {
+      setSelectedRole(targetUser.role || 'user');
+      setSelectedPermissions(targetUser.permissions || []);
+    }
+  }, [targetUser]);
 
   const displayUserList = useMemo(() => {
     const list = [...userList];

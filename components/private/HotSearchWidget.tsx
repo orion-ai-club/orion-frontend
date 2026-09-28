@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { apiService } from '../../services/api';
 import { HotSearchItem, DailyListType } from '../../types';
 import { toast } from '../Toast';
@@ -25,6 +25,8 @@ const NewsWidgetComponent: React.FC = () => {
     guonei: [],
     world: []
   });
+  const dataListsRef = useRef(dataLists);
+  dataListsRef.current = dataLists;
 
   const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<string>('');
@@ -42,40 +44,43 @@ const NewsWidgetComponent: React.FC = () => {
   const dragStart = useRef({ x: 0, y: 0 });
   const dragOffset = useRef({ x: 0, y: 0 });
 
-  const fetchData = async (force = false) => {
-    setLoading(true);
-    try {
-      // If we already have data and not forced, skip (simple caching)
-      if (!force && dataLists[activeTab].length > 0) {
+  const fetchData = useCallback(
+    async (force = false) => {
+      setLoading(true);
+      try {
+        // If we already have data and not forced, skip (simple caching)
+        if (!force && dataListsRef.current[activeTab].length > 0) {
+          setLoading(false);
+          return;
+        }
+
+        const res = await apiService.getDailyList(activeTab, force);
+
+        setDataLists((prev) => ({
+          ...prev,
+          [activeTab]: res.list || []
+        }));
+
+        // Update timestamp if available, else use current time
+        // Ensure we display time part if available, or just standard
+        setLastUpdate(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+
+        if (force) toast.success(t.privateSpace.hotSearch.updated);
+      } catch (e) {
+        console.error(e);
+        toast.error('Failed to load data.');
+      } finally {
         setLoading(false);
-        return;
       }
-
-      const res = await apiService.getDailyList(activeTab, force);
-
-      setDataLists((prev) => ({
-        ...prev,
-        [activeTab]: res.list || []
-      }));
-
-      // Update timestamp if available, else use current time
-      // Ensure we display time part if available, or just standard
-      setLastUpdate(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-
-      if (force) toast.success(t.privateSpace.hotSearch.updated);
-    } catch (e) {
-      console.error(e);
-      toast.error('Failed to load data.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [activeTab, t.privateSpace.hotSearch.updated]
+  );
 
   useEffect(() => {
     if (isOpen) {
-      fetchData();
+      void fetchData();
     }
-  }, [isOpen, activeTab]);
+  }, [isOpen, fetchData]);
 
   // --- Draggable Logic ---
   const handlePointerDown = (e: React.PointerEvent) => {

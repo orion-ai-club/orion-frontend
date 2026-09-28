@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Comment, User } from '../types';
 import { apiService } from '../services/api';
 import { useTranslation } from '../i18n/LanguageContext';
@@ -25,7 +25,7 @@ const Avatar: React.FC<{ user?: any; size?: 'sm' | 'md'; forceLight?: boolean }>
   useEffect(() => {
     setImgSrc(user?.photoURL || generatedAvatarUrl);
     setHasError(false);
-  }, [user, name]);
+  }, [user?.photoURL, generatedAvatarUrl]);
 
   const sizeClasses = size === 'md' ? 'w-12 h-12' : 'w-8 h-8';
   const bgClasses = forceLight
@@ -60,11 +60,8 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
 
-  useEffect(() => {
-    fetchComments();
-  }, [postId]);
-
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
+    setIsLoading(true);
     try {
       const data = await apiService.getComments(postId);
       setComments(Array.isArray(data) ? data : []);
@@ -74,7 +71,11 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [postId]);
+
+  useEffect(() => {
+    void fetchComments();
+  }, [fetchComments]);
 
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();

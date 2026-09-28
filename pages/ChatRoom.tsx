@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
 import { User, ChatMessage, ChatUser } from '../types';
 import { useTranslation } from '../i18n/LanguageContext';
@@ -63,27 +63,19 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ currentUser, socket, targetU
   // Handle external navigation request (targetUser prop)
   useEffect(() => {
     if (targetUser) {
-      // If we receive a target user from props, switch to them immediately
-      // Only if not already active to avoid loops
-      if (activeUser?.id !== targetUser.id) {
-        setActiveUser(targetUser);
-      }
+      setActiveUser((previous) => (previous?.id === targetUser.id ? previous : targetUser));
     }
   }, [targetUser]);
 
   // Fetch Directory Users (Pagination)
-  const fetchDirectory = async (page: number) => {
-    if (isLoadingDir) return;
+  const fetchDirectory = useCallback(async (page: number) => {
     setIsLoadingDir(true);
     try {
-      // Sort by 'vip' desc from backend
       const { data, pagination } = await apiService.getUsers(page, 20, '', 'vip', 'desc');
 
       setDirectoryUsers((prev) => {
-        // Simple deduplication based on _id
         const newUsers = page === 1 ? data : [...prev, ...data];
-        const unique = Array.from(new Map(newUsers.map((u) => [u._id, u])).values());
-        return unique;
+        return Array.from(new Map(newUsers.map((u) => [u._id, u])).values());
       });
       setHasMoreDir(pagination.hasNextPage);
     } catch (e) {
@@ -91,11 +83,11 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ currentUser, socket, targetU
     } finally {
       setIsLoadingDir(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchDirectory(1);
-  }, []);
+    void fetchDirectory(1);
+  }, [fetchDirectory]);
 
   const loadMoreUsers = () => {
     if (hasMoreDir && !isLoadingDir) {
