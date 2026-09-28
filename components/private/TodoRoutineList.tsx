@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Todo } from '../../types';
 import { featureService } from '../../services/featureService';
 import { formatUserDate } from '../../utils/date';
@@ -21,40 +21,45 @@ export const RoutineList: React.FC<RoutineListProps> = ({ onEdit, refreshKey }) 
   const [checkingIds, setCheckingIds] = useState<Set<string>>(new Set());
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'paused'>('active');
+  const requestIdRef = useRef(0);
 
   const RECURRENCE_OPTIONS = getRecurrenceOptions(t);
 
-  const fetchRoutines = async (p: number, reset = false) => {
-    if (loading) return;
-    setLoading(true);
-    try {
-      const activeParam =
-        filterStatus === 'all' ? undefined : filterStatus === 'active' ? true : false;
+  const fetchRoutines = useCallback(
+    async (p: number, reset = false) => {
+      const requestId = ++requestIdRef.current;
+      setLoading(true);
+      try {
+        const activeParam =
+          filterStatus === 'all' ? undefined : filterStatus === 'active' ? true : false;
 
-      const { data, pagination } = await featureService.getTodos(
-        p,
-        50,
-        'routine',
-        undefined,
-        activeParam
-      );
-      if (reset) {
-        setTodos(data);
-      } else {
-        setTodos((prev) => [...prev, ...data]);
+        const { data, pagination } = await featureService.getTodos(
+          p,
+          50,
+          'routine',
+          undefined,
+          activeParam
+        );
+        if (requestId !== requestIdRef.current) return;
+        if (reset) {
+          setTodos(data);
+        } else {
+          setTodos((prev) => [...prev, ...data]);
+        }
+        setHasMore(pagination.hasNextPage);
+        setPage(p);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (requestId === requestIdRef.current) setLoading(false);
       }
-      setHasMore(pagination.hasNextPage);
-      setPage(p);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [filterStatus]
+  );
 
   useEffect(() => {
-    fetchRoutines(1, true);
-  }, [refreshKey, filterStatus]); // Reload when filter changes
+    void fetchRoutines(1, true);
+  }, [refreshKey, fetchRoutines]);
 
   const loadMore = () => {
     if (hasMore && !loading) {

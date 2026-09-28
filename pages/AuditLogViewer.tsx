@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { apiService } from '../services/api';
 import { AuditLog, User } from '../types';
 import { useTranslation } from '../i18n/LanguageContext';
-import { toast } from '../components/Toast';
 import { DeleteModal } from '../components/DeleteModal';
 
 const ITEMS_PER_PAGE = 20;
@@ -40,6 +39,25 @@ export const AuditLogViewer: React.FC = () => {
 
   const isSuperAdmin = currentUser?.role === 'super_admin';
 
+  const filtersRef = useRef({
+    filterOperator,
+    filterAction,
+    targetSearch,
+    ipSearch,
+    startDate,
+    endDate
+  });
+  filtersRef.current = {
+    filterOperator,
+    filterAction,
+    targetSearch,
+    ipSearch,
+    startDate,
+    endDate
+  };
+  const viewModeRef = useRef(viewMode);
+  viewModeRef.current = viewMode;
+
   useEffect(() => {
     apiService
       .getCurrentUser()
@@ -57,16 +75,17 @@ export const AuditLogViewer: React.FC = () => {
     }
   };
 
-  const fetchLogs = async (page = 1) => {
+  const fetchLogs = useCallback(async (page = 1) => {
+    const filters = filtersRef.current;
     setLoading(true);
     try {
       const res = await apiService.getAuditLogs(page, ITEMS_PER_PAGE, {
-        operator: filterOperator?._id,
-        action: filterAction || undefined,
-        target: targetSearch || undefined,
-        ip: ipSearch || undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined
+        operator: filters.filterOperator?._id,
+        action: filters.filterAction || undefined,
+        target: filters.targetSearch || undefined,
+        ip: filters.ipSearch || undefined,
+        startDate: filters.startDate || undefined,
+        endDate: filters.endDate || undefined
       });
       setLogs(res.data);
       setPagination({
@@ -80,7 +99,7 @@ export const AuditLogViewer: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const fetchOperators = async () => {
     try {
@@ -92,17 +111,18 @@ export const AuditLogViewer: React.FC = () => {
   };
 
   useEffect(() => {
-    if (viewMode === 'TIMELINE') fetchLogs(1);
-    if (viewMode === 'OPERATORS') fetchOperators();
-  }, [viewMode, filterOperator, filterAction, startDate, endDate]);
+    if (viewMode === 'TIMELINE') void fetchLogs(1);
+    if (viewMode === 'OPERATORS') void fetchOperators();
+  }, [viewMode, filterOperator, filterAction, startDate, endDate, fetchLogs]);
 
-  // Debounced search
+  // Debounced text/IP search. The ref keeps view changes from triggering a duplicate fetch;
+  // the immediate effect above owns viewMode changes.
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (viewMode === 'TIMELINE') fetchLogs(1);
+      if (viewModeRef.current === 'TIMELINE') void fetchLogs(1);
     }, 500);
     return () => clearTimeout(timer);
-  }, [targetSearch, ipSearch]);
+  }, [targetSearch, ipSearch, fetchLogs]);
 
   const handleDelete = async () => {
     if (!logToDelete) return;

@@ -116,7 +116,7 @@ export const SimpleEditor: React.FC<SimpleEditorProps> = ({
       .getTags('all')
       .then(setAvailableTags)
       .catch(() => {});
-  }, [draftKey]);
+  }, [draftKey, editingPost]);
   useEffect(() => {
     const timer = setTimeout(() => {
       setSaved(persist() ? '草稿已保存在此设备' : '设备空间不足，请先保存日记');

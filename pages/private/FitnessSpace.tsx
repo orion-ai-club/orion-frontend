@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { apiService } from '../../services/api';
 import { FitnessRecord, User } from '../../types';
@@ -60,41 +60,39 @@ export const FitnessSpace: React.FC<FitnessSpaceProps> = ({ currentUser }) => {
   const [summaryDate, setSummaryDate] = useState<Date | null>(null);
 
   // --- Users Logic ---
-  const fetchUsers = async (page: number) => {
-    if (isLoadingUsers) return;
-    setIsLoadingUsers(true);
-    try {
-      // Fetch 50 users per page, sorted by role (server logic usually handles grouping), desc order
-      const { data, pagination } = await apiService.getUsers(page, 50, '', 'role', 'desc');
+  const fetchUsers = useCallback(
+    async (page: number) => {
+      setIsLoadingUsers(true);
+      try {
+        const { data, pagination } = await apiService.getUsers(page, 50, '', 'role', 'desc');
 
-      setUserList((prev) => {
-        // Use Map to deduplicate based on _id from API responses
-        const combined = page === 1 ? data : [...prev, ...data];
-        return Array.from(new Map(combined.map((u) => [u._id, u])).values());
-      });
-      setHasMoreUsers(pagination.hasNextPage);
+        setUserList((prev) => {
+          const combined = page === 1 ? data : [...prev, ...data];
+          return Array.from(new Map(combined.map((u) => [u._id, u])).values());
+        });
+        setHasMoreUsers(pagination.hasNextPage);
 
-      // Auto-select logic on first load
-      if (page === 1 && !selectedUser) {
-        // Default to Current User if available
-        if (currentUser) {
-          setSelectedUser(currentUser);
-        } else if (data.length > 0) {
-          // Fallback to priority emails or first user
-          const priority = data.find((u) => PRIORITY_EMAILS.includes(u.email));
-          setSelectedUser(priority || data[0]);
+        if (page === 1) {
+          setSelectedUser((previous) => {
+            if (previous) return previous;
+            if (currentUser) return currentUser;
+            if (data.length === 0) return null;
+            const priority = data.find((u) => PRIORITY_EMAILS.includes(u.email));
+            return priority || data[0];
+          });
         }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsLoadingUsers(false);
       }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsLoadingUsers(false);
-    }
-  };
+    },
+    [currentUser]
+  );
 
   useEffect(() => {
-    fetchUsers(1);
-  }, []);
+    void fetchUsers(1);
+  }, [fetchUsers]);
 
   const handleLoadMoreUsers = () => {
     if (hasMoreUsers && !isLoadingUsers) {

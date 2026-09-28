@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useTranslation } from '../../../i18n/LanguageContext';
 import { apiService } from '../../../services/api';
 import { PeriodRecord, PeriodResponse, User } from '../../../types';
@@ -36,6 +36,7 @@ export const PeriodTrackerWidget: React.FC<PeriodTrackerWidgetProps> = ({ onRefr
   // Super Admin Multi-user State
   const [userList, setUserList] = useState<User[]>([]);
   const [targetUser, setTargetUser] = useState<User | null>(null);
+  const hasPeriodDataRef = useRef(false);
 
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -74,26 +75,26 @@ export const PeriodTrackerWidget: React.FC<PeriodTrackerWidgetProps> = ({ onRefr
   }, [user, isSuperAdmin]);
 
   // --- Fetch Period Data ---
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!targetUser) return;
 
-    // Only show loading indicator on initial load or user switch, not refreshes
-    if (!data) setLoading(true);
+    if (!hasPeriodDataRef.current) setLoading(true);
 
     try {
-      // Pass targetUserId to view specific user's data
       const res = await apiService.getPeriodData(targetUser._id);
+      hasPeriodDataRef.current = true;
       setData(res);
     } catch (e) {
       // Quiet fail if API not ready
     } finally {
       setLoading(false);
     }
-  };
+  }, [targetUser]);
 
   useEffect(() => {
-    if (targetUser) fetchData();
-  }, [targetUser]);
+    hasPeriodDataRef.current = false;
+    if (targetUser) void fetchData();
+  }, [targetUser, fetchData]);
 
   // Calendar Logic
   const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
@@ -149,7 +150,7 @@ export const PeriodTrackerWidget: React.FC<PeriodTrackerWidgetProps> = ({ onRefr
       await apiService.savePeriodRecord(activeRecord, targetUser?._id);
       toast.success(t.privateSpace.leisure.cycle.save + ' Success');
       setIsModalOpen(false);
-      fetchData(); // Refresh calendar
+      void fetchData(); // Refresh calendar
     } catch (e) {
       toast.error('Failed to save');
     }
@@ -162,7 +163,7 @@ export const PeriodTrackerWidget: React.FC<PeriodTrackerWidgetProps> = ({ onRefr
       toast.success('Deleted');
       setIsModalOpen(false);
       setShowDeleteConfirm(false);
-      fetchData();
+      void fetchData();
     } catch (e) {
       toast.error('Failed to delete');
     }

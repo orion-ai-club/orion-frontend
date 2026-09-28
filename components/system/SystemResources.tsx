@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from '../../i18n/LanguageContext';
 import { featureService } from '../../services/featureService';
@@ -39,6 +39,10 @@ export const SystemResources: React.FC = () => {
   // R2 Usage Dashboard State
   const [r2Usage, setR2Usage] = useState<R2UsageStats | null>(null);
   const [loadingR2Usage, setLoadingR2Usage] = useState(false);
+  const usageDataRef = useRef<CloudinaryUsage | null>(null);
+  usageDataRef.current = usageData;
+  const r2UsageRef = useRef<R2UsageStats | null>(null);
+  r2UsageRef.current = r2Usage;
 
   // R2 Navigation State
   const [r2Type, setR2Type] = useState<'all' | 'resource' | 'backup'>('all');
@@ -79,7 +83,7 @@ export const SystemResources: React.FC = () => {
   }, [contextMenu]);
 
   // --- Cloudinary Logic ---
-  const fetchUsage = async () => {
+  const fetchUsage = useCallback(async () => {
     setLoadingUsage(true);
     try {
       const data = await featureService.getCloudinaryUsage();
@@ -90,7 +94,7 @@ export const SystemResources: React.FC = () => {
     } finally {
       setLoadingUsage(false);
     }
-  };
+  }, []);
 
   const handleOpenCloudinaryLibrary = async () => {
     setIsCloudinaryLibraryOpen(true);
@@ -106,44 +110,47 @@ export const SystemResources: React.FC = () => {
   };
 
   // --- R2 Logic ---
-  const fetchR2Data = async (cursor?: string) => {
-    setLoadingR2(true);
-    try {
-      // Call updated endpoint with folder & type
-      const res: any = await featureService.getR2Files(200, cursor, r2Type, currentFolder);
-      if (res.success) {
-        const incomingFiles = res.data.files || [];
-        const incomingFolders = res.data.folders || [];
-        const pagination = res.pagination || {};
+  const fetchR2Data = useCallback(
+    async (cursor?: string) => {
+      setLoadingR2(true);
+      try {
+        // Call updated endpoint with folder & type
+        const res: any = await featureService.getR2Files(200, cursor, r2Type, currentFolder);
+        if (res.success) {
+          const incomingFiles = res.data.files || [];
+          const incomingFolders = res.data.folders || [];
+          const pagination = res.pagination || {};
 
-        // If cursor exists, append files (folders usually don't paginate the same way in mixed views, but logic applies)
-        // For cleaner folder navigation, we usually replace list on folder change, append on load more
-        if (cursor) {
-          setR2Files((prev) => [...prev, ...incomingFiles]);
-        } else {
-          setR2Files(incomingFiles);
-          setR2Folders(incomingFolders);
-        }
-
-        // Sync current folder from metadata if available to keep breadcrumbs accurate
-        if (res.meta && typeof res.meta.currentPath === 'string') {
-          if (res.meta.currentPath !== currentFolder) {
-            setCurrentFolder(res.meta.currentPath);
+          // If cursor exists, append files (folders usually don't paginate the same way in mixed views, but logic applies)
+          // For cleaner folder navigation, we usually replace list on folder change, append on load more
+          if (cursor) {
+            setR2Files((prev) => [...prev, ...incomingFiles]);
+          } else {
+            setR2Files(incomingFiles);
+            setR2Folders(incomingFolders);
           }
+
+          // Sync current folder from metadata if available to keep breadcrumbs accurate
+          if (res.meta && typeof res.meta.currentPath === 'string') {
+            if (res.meta.currentPath !== currentFolder) {
+              setCurrentFolder(res.meta.currentPath);
+            }
+          }
+
+          setR2Cursor(pagination.nextCursor);
+          setR2HasMore(!!pagination.hasMore);
         }
-
-        setR2Cursor(pagination.nextCursor);
-        setR2HasMore(!!pagination.hasMore);
+      } catch (e) {
+        console.error(e);
+        toast.error(t.system.r2.empty);
+      } finally {
+        setLoadingR2(false);
       }
-    } catch (e) {
-      console.error(e);
-      toast.error(t.system.r2.empty);
-    } finally {
-      setLoadingR2(false);
-    }
-  };
+    },
+    [currentFolder, r2Type, t.system.r2.empty]
+  );
 
-  const fetchR2Usage = async () => {
+  const fetchR2Usage = useCallback(async () => {
     setLoadingR2Usage(true);
     try {
       const stats = await featureService.getR2Usage();
@@ -153,21 +160,19 @@ export const SystemResources: React.FC = () => {
     } finally {
       setLoadingR2Usage(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    if (activeTab === 'CLOUDINARY' && !usageData) {
-      fetchUsage();
+    if (activeTab === 'CLOUDINARY' && !usageDataRef.current) {
+      void fetchUsage();
     } else if (activeTab === 'R2') {
-      // Reset and fetch when tab or type or folder changes
       setR2Files([]);
       setR2Folders([]);
       setR2Cursor(undefined);
-      fetchR2Data();
-      // Only fetch usage once per session or on tab switch
-      if (!r2Usage) fetchR2Usage();
+      void fetchR2Data();
+      if (!r2UsageRef.current) void fetchR2Usage();
     }
-  }, [activeTab, r2Type, currentFolder]);
+  }, [activeTab, currentFolder, r2Type, fetchUsage, fetchR2Data, fetchR2Usage]);
 
   const handleLoadMoreR2 = () => {
     if (r2HasMore && !loadingR2) {
