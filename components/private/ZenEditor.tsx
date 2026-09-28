@@ -237,17 +237,17 @@ export const ZenEditor: React.FC<ZenEditorProps> = ({
 
     if (['youtube.com', 'www.youtube.com', 'm.youtube.com'].includes(parsed.hostname)) {
       const videoId = parsed.searchParams.get('v');
-      if (videoId && /^[\\w-]{11}$/.test(videoId)) {
+      if (videoId && /^[\w-]{11}$/.test(videoId)) {
         embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}`;
       }
     } else if (parsed.hostname === 'youtu.be') {
       const videoId = parsed.pathname.slice(1).split('/')[0];
-      if (videoId && /^[\\w-]{11}$/.test(videoId)) {
+      if (videoId && /^[\w-]{11}$/.test(videoId)) {
         embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}`;
       }
     } else if (
       ['vimeo.com', 'www.vimeo.com'].includes(parsed.hostname) &&
-      /^\\/\\d+$/.test(parsed.pathname)
+      /^\/\d+$/.test(parsed.pathname)
     ) {
       embedUrl = `https://player.vimeo.com/video${parsed.pathname}`;
     }
