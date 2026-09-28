@@ -463,6 +463,23 @@ export const featureService = {
     return await fetchClient(`/upload/list?${params.toString()}`);
   },
 
+  getR2ObjectBlob: async (key: string): Promise<Blob> => {
+    const token = localStorage.getItem('auth_token');
+    const headers: HeadersInit = {};
+    if (token) headers['x-auth-token'] = token;
+
+    const response = await fetch(
+      `${API_BASE_URL}/upload/object?key=${encodeURIComponent(key)}`,
+      { headers }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to read R2 object: ${response.status}`);
+    }
+
+    return await response.blob();
+  },
+
   deleteR2File: async (key: string): Promise<void> => {
     await fetchClient('/upload', {
       method: 'DELETE',
