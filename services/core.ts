@@ -16,7 +16,7 @@ const FALLBACK_REMOTE_API = 'https://api.samyao.me/api';
  */
 export const API_BASE_URL = import.meta.env.DEV
   ? import.meta.env.VITE_API_URL || '/api'
-  : import.meta.env.VITE_API_URL || FALLBACK_REMOTE_API;
+  : FALLBACK_REMOTE_API;
 
 console.log(`🚀 Current API Target: ${API_BASE_URL}`);
 
