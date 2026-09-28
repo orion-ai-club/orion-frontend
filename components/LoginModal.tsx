@@ -334,14 +334,23 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
           setPassword('');
         } else if (isRegister) {
           const formattedPhone = phone ? `+${phone}` : undefined;
-          await apiService.register(name, email, password, passwordConfirm, formattedPhone);
-          const user = await apiService.getCurrentUser();
+          const response = await apiService.register(
+            name,
+            email,
+            password,
+            passwordConfirm,
+            formattedPhone
+          );
+          const user = response.user ?? (await apiService.getCurrentUser());
+          if (!user)
+            throw new Error('Registration succeeded but no authenticated session was found.');
           onLoginSuccess(user);
           onClose();
         } else {
-          let accountIdentifier = loginMethod === 'email' ? email : `+${phone}`;
-          await apiService.login(accountIdentifier, password);
-          const user = await apiService.getCurrentUser();
+          const accountIdentifier = loginMethod === 'email' ? email : `+${phone}`;
+          const response = await apiService.login(accountIdentifier, password);
+          const user = response.user ?? (await apiService.getCurrentUser());
+          if (!user) throw new Error('Sign in succeeded but no authenticated session was found.');
           onLoginSuccess(user);
           onClose();
         }

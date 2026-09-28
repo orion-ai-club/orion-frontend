@@ -14,9 +14,14 @@ const FALLBACK_REMOTE_API = 'https://api.samyao.me/api';
  * - 如果你运行 npm run dev，这里通常是 .env 里的线上地址
  * 2. 如果没有环境变量，则使用 FALLBACK_REMOTE_API 兜底。
  */
+const isVercelHostedBrowser =
+  typeof window !== 'undefined' && window.location.hostname.endsWith('.vercel.app');
+
 export const API_BASE_URL = import.meta.env.DEV
   ? import.meta.env.VITE_API_URL || '/api'
-  : FALLBACK_REMOTE_API;
+  : isVercelHostedBrowser
+    ? '/api'
+    : FALLBACK_REMOTE_API;
 
 console.log(`🚀 Current API Target: ${API_BASE_URL}`);
 
