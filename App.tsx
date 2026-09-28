@@ -670,11 +670,13 @@ const App: React.FC = () => {
         title={t.delete.confirmTitle}
       />
 
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-        onLoginSuccess={handleLoginSuccess}
-      />
+      {isLoginModalOpen && (
+        <LoginModal
+          isOpen
+          onClose={() => setIsLoginModalOpen(false)}
+          onLoginSuccess={handleLoginSuccess}
+        />
+      )}
     </>
   );
 };
