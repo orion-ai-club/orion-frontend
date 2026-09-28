@@ -89,9 +89,8 @@ export default defineConfig(({ mode }) => {
             if (id.includes('@tiptap') || id.includes('prosemirror-')) return 'journal-editor';
             if (id.includes('katex')) return 'journal-math';
             if (id.includes('firebase') || id.includes('@firebase')) return 'vendor-firebase';
-            if (id.includes('echarts') || id.includes('zrender') || id.includes('recharts')) {
-              return 'vendor-charts';
-            }
+            if (id.includes('echarts') || id.includes('zrender')) return 'vendor-echarts';
+            if (id.includes('recharts')) return 'vendor-recharts';
             if (id.includes('leaflet')) return 'vendor-maps';
             if (
               id.includes('socket.io-client') ||

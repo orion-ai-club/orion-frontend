@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import * as echarts from 'echarts';
+import * as echarts from 'echarts/core';
+import { GeoComponent, TooltipComponent } from 'echarts/components';
+import { CanvasRenderer } from 'echarts/renderers';
+import type { EChartsType } from 'echarts/core';
+
+echarts.use([GeoComponent, TooltipComponent, CanvasRenderer]);
 import L from 'leaflet';
 import { useTranslation } from '../i18n/LanguageContext';
 import { apiService } from '../services/api';
@@ -167,7 +172,7 @@ export const FootprintSpace: React.FC<FootprintSpaceProps> = ({ theme }) => {
   const leafletContainerRef = useRef<HTMLDivElement>(null); // For Leaflet Div
   const pickerMapRef = useRef<L.Map | null>(null); // For Picker Map
   const pickerContainerRef = useRef<HTMLDivElement>(null); // For Picker Div
-  const chartInstance = useRef<echarts.ECharts | null>(null);
+  const chartInstance = useRef<EChartsType | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
