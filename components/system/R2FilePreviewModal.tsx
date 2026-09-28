@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { featureService } from '../../services/featureService';
 import {
   getR2FileIcon,
   getR2FileName,
@@ -26,8 +27,10 @@ export const R2FilePreviewModal: React.FC<R2FilePreviewModalProps> = ({ file, on
   const [textContent, setTextContent] = useState('');
   const [textLoading, setTextLoading] = useState(false);
   const [textError, setTextError] = useState<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState('');
 
   const url = file?.url || file?.publicUrl || '';
+  const objectKey = file?.key || file?.path || '';
   const kind = file ? getR2PreviewKind(file) : 'unsupported';
   const icon = file ? getR2FileIcon(file) : getR2FileIcon({ name: '' });
   const name = file ? getR2FileName(file) : '';
@@ -44,35 +47,47 @@ export const R2FilePreviewModal: React.FC<R2FilePreviewModalProps> = ({ file, on
   }, [file, onClose]);
 
   useEffect(() => {
-    if (!file || (kind !== 'code' && kind !== 'text')) {
-      setTextContent('');
-      setTextError(null);
-      setTextLoading(false);
+    setTextContent('');
+    setTextError(null);
+    setTextLoading(false);
+
+    if (blobUrl) {
+      URL.revokeObjectURL(blobUrl);
+      setBlobUrl('');
+    }
+
+    if (!file || (kind !== 'code' && kind !== 'text' && kind !== 'pdf')) return;
+
+    if (!objectKey) {
+      setTextError('This object does not expose an R2 key for authenticated preview.');
       return;
     }
 
-    if (!url) {
-      setTextError('This object does not have a public read URL.');
-      return;
-    }
-
-    if ((file.size || 0) > MAX_INLINE_TEXT_BYTES) {
+    if ((kind === 'code' || kind === 'text') && (file.size || 0) > MAX_INLINE_TEXT_BYTES) {
       setTextError(
         `This file is ${formatBytes(file.size)}. Open the original file for large-file viewing.`
       );
       return;
     }
 
-    const controller = new AbortController();
+    let disposed = false;
+    let nextBlobUrl = '';
     setTextLoading(true);
-    setTextError(null);
 
-    fetch(url, { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.text();
-      })
-      .then((content) => {
+    featureService
+      .getR2ObjectBlob(objectKey)
+      .then(async (blob) => {
+        if (disposed) return;
+
+        if (kind === 'pdf') {
+          nextBlobUrl = URL.createObjectURL(blob);
+          setBlobUrl(nextBlobUrl);
+          return;
+        }
+
+        const content = await blob.text();
+        if (disposed) return;
+
         if (getR2LanguageLabel(file) === 'JSON') {
           try {
             setTextContent(JSON.stringify(JSON.parse(content), null, 2));
@@ -84,15 +99,22 @@ export const R2FilePreviewModal: React.FC<R2FilePreviewModalProps> = ({ file, on
         setTextContent(content);
       })
       .catch((error) => {
-        if (error?.name === 'AbortError') return;
+        if (disposed) return;
         setTextError(
           `Inline preview could not load this object (${error?.message || 'unknown error'}). You can still open the original file.`
         );
       })
-      .finally(() => setTextLoading(false));
+      .finally(() => {
+        if (!disposed) setTextLoading(false);
+      });
 
-    return () => controller.abort();
-  }, [file, kind, url]);
+    return () => {
+      disposed = true;
+      if (nextBlobUrl) URL.revokeObjectURL(nextBlobUrl);
+    };
+    // blobUrl is intentionally excluded: this effect owns and revokes the object URL it creates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file, kind, objectKey]);
 
   const codeLines = useMemo(() => textContent.split('\n'), [textContent]);
 
@@ -196,12 +218,35 @@ export const R2FilePreviewModal: React.FC<R2FilePreviewModalProps> = ({ file, on
             </div>
           )}
 
-          {kind === 'pdf' && url && (
-            <iframe
-              src={`${url}#toolbar=1&navpanes=0`}
-              title={name}
-              className="w-full h-full bg-white"
-            />
+          {kind === 'pdf' && (
+            textLoading ? (
+              <div className="w-full h-full flex items-center justify-center text-slate-500">
+                <i className="fas fa-circle-notch fa-spin mr-2"></i> Loading PDF…
+              </div>
+            ) : blobUrl ? (
+              <iframe
+                src={`${blobUrl}#toolbar=1&navpanes=0`}
+                title={name}
+                className="w-full h-full bg-white"
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-8 text-center">
+                <i className="fas fa-file-pdf text-5xl text-red-500"></i>
+                <p className="max-w-2xl text-sm text-slate-500">
+                  {textError || 'PDF preview is unavailable.'}
+                </p>
+                {url && (
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-4 py-2 rounded-lg bg-sky-500 text-white text-xs font-bold"
+                  >
+                    Open original
+                  </a>
+                )}
+              </div>
+            )
           )}
 
           {(kind === 'code' || kind === 'text') && (
