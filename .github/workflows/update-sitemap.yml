@@ -32,15 +32,15 @@ jobs:
         run: |
           git config --global user.name 'Sitemap Bot'
           git config --global user.email 'bot@noreply.github.com'
-          
+
           git add public/sitemap.xml
-          
+
           # 🔥 关键修改 3: 更稳健的检测和推送方式
           # 只有当文件真的有变化时才 commit，否则会报错
           if [[ -n $(git status -s) ]]; then
             echo "Changes detected, committing..."
             git commit -m "chore(seo): auto update sitemap"
-            
+
             # 强制推送到远程的 master 分支
             git push origin HEAD:master
           else

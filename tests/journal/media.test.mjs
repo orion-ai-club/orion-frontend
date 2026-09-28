@@ -50,12 +50,8 @@ try {
   await page.keyboard.up('Control');
   await page.select('[aria-label="字体"]', 'serif');
   await page.select('[aria-label="字号"]', '28px');
-  await page.$eval('[aria-label="文字颜色"]', (el) => {
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-    setter.call(el, '#702040');
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
-  });
+  await page.click('[aria-label="文字颜色"]');
+  await page.click('.journal-color-menu [aria-label="紫"]');
   assert(
     await page.$eval(
       '.tiptap',

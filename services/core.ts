@@ -116,7 +116,6 @@ export async function fetchEventStream<T>(
   return finalResult;
 }
 
-
 /**
  * 通用的 Fetch 客户端封装
  * 包含：超时控制、自动 Token 注入、统一错误处理、401 自动登出

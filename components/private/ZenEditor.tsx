@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 // 假设你的图片上传工具在这里
 import { uploadImage } from '../../services/media';
 import { safeExternalUrl, sanitizeEditorHtml } from '../../utils/security';
+import { toast } from '../Toast';
 
 interface ZenEditorProps {
   initialContent?: string;
