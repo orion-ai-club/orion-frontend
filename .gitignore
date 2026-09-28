@@ -27,3 +27,5 @@ dist-ssr
 
 # Browser regression artifacts
 test-results/
+
+.cache/
