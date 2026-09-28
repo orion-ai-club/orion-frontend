@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 // 假设你的图片上传工具在这里
 import { uploadImage } from '../../services/media';
+import { safeExternalUrl, sanitizeEditorHtml } from '../../utils/security';
 
 interface ZenEditorProps {
   initialContent?: string;
@@ -109,7 +110,7 @@ const cleanPastedHTML = (html: string): string => {
     }
   });
 
-  return doc.body.innerHTML;
+  return sanitizeEditorHtml(doc.body.innerHTML);
 };
 
 export const ZenEditor: React.FC<ZenEditorProps> = ({
@@ -162,7 +163,7 @@ export const ZenEditor: React.FC<ZenEditorProps> = ({
   useEffect(() => {
     // Only configure editor when CSS is loaded and ref is available
     if (isCssLoaded && editorRef.current && initialContent) {
-      editorRef.current.innerHTML = initialContent;
+      editorRef.current.innerHTML = sanitizeEditorHtml(initialContent);
 
       const checkHljs = setInterval(() => {
         if ((window as any).hljs) {
@@ -225,26 +226,38 @@ export const ZenEditor: React.FC<ZenEditorProps> = ({
 
   // --- Feature: Insert Video ---
   const confirmInsertVideo = () => {
-    if (!videoUrl) {
-      setShowVideoInput(false);
+    const safeUrl = safeExternalUrl(videoUrl);
+    if (!safeUrl) {
+      toast.error('Please enter a valid HTTPS video URL.');
       return;
     }
 
-    let embedUrl = videoUrl;
-    if (videoUrl.includes('[youtube.com/watch?v=](https://youtube.com/watch?v=)')) {
-      const videoId = videoUrl.split('v=')[1]?.split('&')[0];
-      embedUrl = `https://www.youtube.com/embed/${videoId}`;
-    } else if (videoUrl.includes('youtu.be/')) {
-      const videoId = videoUrl.split('youtu.be/')[1];
-      embedUrl = `https://www.youtube.com/embed/${videoId}`;
+    const parsed = new URL(safeUrl);
+    let embedUrl = safeUrl;
+
+    if (['youtube.com', 'www.youtube.com', 'm.youtube.com'].includes(parsed.hostname)) {
+      const videoId = parsed.searchParams.get('v');
+      if (videoId && /^[\\w-]{11}$/.test(videoId)) {
+        embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}`;
+      }
+    } else if (parsed.hostname === 'youtu.be') {
+      const videoId = parsed.pathname.slice(1).split('/')[0];
+      if (videoId && /^[\\w-]{11}$/.test(videoId)) {
+        embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}`;
+      }
+    } else if (
+      ['vimeo.com', 'www.vimeo.com'].includes(parsed.hostname) &&
+      /^\\/\\d+$/.test(parsed.pathname)
+    ) {
+      embedUrl = `https://player.vimeo.com/video${parsed.pathname}`;
     }
 
-    const html = `
+    const html = sanitizeEditorHtml(`
       <div class="my-4 relative w-full aspect-video rounded-lg overflow-hidden border border-gray-200 bg-gray-100 shadow-sm">
-        <iframe src="${embedUrl}" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        <iframe src="${embedUrl}" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
       </div>
       <p><br/></p>
-    `;
+    `);
 
     exec('insertHTML', html);
     setVideoUrl('');
