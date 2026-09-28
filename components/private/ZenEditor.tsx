@@ -114,6 +114,9 @@ const cleanPastedHTML = (html: string): string => {
   return sanitizeEditorHtml(doc.body.innerHTML);
 };
 
+let isRemixIconLoaded = false;
+let remixIconLoadingPromise: Promise<void> | null = null;
+
 export const ZenEditor: React.FC<ZenEditorProps> = ({
   initialContent = '',
   onChange,
@@ -122,10 +125,6 @@ export const ZenEditor: React.FC<ZenEditorProps> = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const savedRange = useRef<Range | null>(null);
-
-  // Global state to track CSS loading across component remounts
-  let isRemixIconLoaded = false;
-  let loadingPromise: Promise<void> | null = null;
 
   // --- UI States ---
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
@@ -141,20 +140,20 @@ export const ZenEditor: React.FC<ZenEditorProps> = ({
       return;
     }
 
-    if (!loadingPromise) {
+    if (!remixIconLoadingPromise) {
       // ✅ Use dynamic import()
       // Only download when component mounts for the first time
-      loadingPromise = import('remixicon/fonts/remixicon.css')
+      remixIconLoadingPromise = import('remixicon/fonts/remixicon.css')
         .then(() => {
           isRemixIconLoaded = true;
         })
         .catch((err) => {
           console.error('Failed to load icons', err);
-          loadingPromise = null; // Allow retry
+          remixIconLoadingPromise = null; // Allow retry
         });
     }
 
-    loadingPromise.then(() => {
+    remixIconLoadingPromise.then(() => {
       if (!isRemixIconLoaded) return; // Failed case
       setIsCssLoaded(true);
     });
