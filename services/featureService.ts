@@ -450,7 +450,7 @@ export const featureService = {
   getR2Files: async (
     limit = 50,
     cursor?: string,
-    type: 'resource' | 'backup' = 'resource',
+    type: 'all' | 'resource' | 'backup' = 'all',
     folder: string = ''
   ): Promise<any> => {
     const params = new URLSearchParams({
