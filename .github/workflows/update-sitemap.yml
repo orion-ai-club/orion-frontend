@@ -24,6 +24,8 @@ jobs:
           node-version: '22' # 推荐用 LTS 版本，24 可能还太新不稳定
 
       - name: Generate Sitemap
+        env:
+          SITE_URL: https://samyao.me
         run: node scripts/generate-sitemap.js
 
       - name: Commit and Push
