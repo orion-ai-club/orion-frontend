@@ -6,7 +6,10 @@ const browser = await puppeteer.launch({
     (process.platform === 'win32'
       ? 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
       : undefined),
-  headless: true
+  headless: true,
+  // GitHub's Ubuntu runners disable Chrome's usable sandbox via AppArmor/user namespaces.
+  // This only affects the isolated CI browser used by this test suite.
+  args: ['--no-sandbox']
 });
 const page = await browser.newPage();
 const errors = [];
