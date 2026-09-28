@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Todo } from '../../types';
 import { featureService } from '../../services/featureService';
 import { formatUserDate } from '../../utils/date';
@@ -26,6 +26,7 @@ export const WishList: React.FC<WishListProps> = ({
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
+  const requestIdRef = useRef(0);
 
   // Search state if needed, or controlled by parent. For now self contained or just fetch activeTab.
   // We assume basic listing by activeTab status is sufficient for now, using backend filtering if needed or just filtering locally if API returns mixed.
@@ -39,11 +40,12 @@ export const WishList: React.FC<WishListProps> = ({
   // Current implementation: Fetch `type=wish` and filter locally. This is imperfect with pagination but acceptable for MVP or if dataset is small.
   // Better: Pass `keyword` for search.
 
-  const fetchWishes = async (p: number, reset = false) => {
-    if (loading) return;
+  const fetchWishes = useCallback(async (p: number, reset = false) => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     try {
       const { data, pagination } = await featureService.getTodos(p, 50, 'wish');
+      if (requestId !== requestIdRef.current) return;
       if (reset) {
         setTodos(data);
       } else {
@@ -54,13 +56,13 @@ export const WishList: React.FC<WishListProps> = ({
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchWishes(1, true);
-  }, [refreshKey]);
+    void fetchWishes(1, true);
+  }, [refreshKey, fetchWishes]);
 
   const loadMore = () => {
     if (hasMore && !loading) {

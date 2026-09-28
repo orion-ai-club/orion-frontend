@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { featureService } from '../services/featureService';
-import { toast } from './Toast';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../i18n/LanguageContext';
 
@@ -19,26 +18,7 @@ export const BackupTerminalModal: React.FC<BackupTerminalModalProps> = ({ isOpen
   const navigate = useNavigate();
   const hasStartedRef = useRef(false);
 
-  useEffect(() => {
-    if (isOpen && !hasStartedRef.current) {
-      startBackup();
-    }
-    // Cleanup on close
-    if (!isOpen) {
-      setLogs([]);
-      setIsDone(false);
-      setIsError(false);
-      hasStartedRef.current = false;
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [logs]);
-
-  const startBackup = async () => {
+  const startBackup = useCallback(async () => {
     hasStartedRef.current = true;
     setLogs([t.system.backup.init, t.system.backup.reqDump]);
 
@@ -78,7 +58,30 @@ export const BackupTerminalModal: React.FC<BackupTerminalModalProps> = ({ isOpen
         t.system.backup.terminated
       ]);
     }
-  };
+  }, [
+    t.system.backup.init,
+    t.system.backup.reqDump,
+    t.system.backup.success,
+    t.system.backup.terminated
+  ]);
+
+  useEffect(() => {
+    if (isOpen && !hasStartedRef.current) {
+      void startBackup();
+    }
+    if (!isOpen) {
+      setLogs([]);
+      setIsDone(false);
+      setIsError(false);
+      hasStartedRef.current = false;
+    }
+  }, [isOpen, startBackup]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [logs]);
 
   const handleGoToFiles = () => {
     onClose();

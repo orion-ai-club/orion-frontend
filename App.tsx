@@ -13,26 +13,49 @@ import { Theme, PageView, User, BlogPost, ChatUser, PERM_KEYS, can } from './typ
 import { useTranslation } from './i18n/LanguageContext';
 import { Helmet } from 'react-helmet-async';
 
-// New Component Imports
-import { LoginModal } from './components/LoginModal';
-import { ResumeView } from './components/ResumeView'; // Used inside Home Route
+// Shared shell imports stay eager; route/modal content is loaded on demand below.
 import { Footer } from './components/Footer';
 import { PageLoader } from './components/PageLoader';
 import { AccessRestricted } from './components/AccessRestricted';
 import { InstallPwa } from './components/InstallPwa';
-
-// --- PAGES IMPORTS (Moved from components) ---
-import { BlogList } from './pages/BlogList';
-import { ArticleView } from './pages/ArticleView';
-import { PortfolioPage } from './pages/PortfolioPage';
-import { UserProfile } from './pages/UserProfile';
-import { SettingsPage } from './pages/SettingsPage';
-import { ChatRoom } from './pages/ChatRoom';
-import { AuditLogViewer } from './pages/AuditLogViewer';
-import { SystemManagement } from './pages/SystemManagement';
-import { NotFound } from './pages/NotFound';
-import { NoPermission } from './pages/NoPermission';
 import { createLazyComponent } from './components/LazyLoader';
+
+const LoginModal = createLazyComponent(() =>
+  import('./components/LoginModal').then((module) => ({ default: module.LoginModal }))
+);
+const ResumeView = createLazyComponent(() =>
+  import('./components/ResumeView').then((module) => ({ default: module.ResumeView }))
+);
+const BlogList = createLazyComponent(() =>
+  import('./pages/BlogList').then((module) => ({ default: module.BlogList }))
+);
+const ArticleView = createLazyComponent(() =>
+  import('./pages/ArticleView').then((module) => ({ default: module.ArticleView }))
+);
+const PortfolioPage = createLazyComponent(() =>
+  import('./pages/PortfolioPage').then((module) => ({ default: module.PortfolioPage }))
+);
+const UserProfile = createLazyComponent(() =>
+  import('./pages/UserProfile').then((module) => ({ default: module.UserProfile }))
+);
+const SettingsPage = createLazyComponent(() =>
+  import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage }))
+);
+const ChatRoom = createLazyComponent(() =>
+  import('./pages/ChatRoom').then((module) => ({ default: module.ChatRoom }))
+);
+const AuditLogViewer = createLazyComponent(() =>
+  import('./pages/AuditLogViewer').then((module) => ({ default: module.AuditLogViewer }))
+);
+const SystemManagement = createLazyComponent(() =>
+  import('./pages/SystemManagement').then((module) => ({ default: module.SystemManagement }))
+);
+const NotFound = createLazyComponent(() =>
+  import('./pages/NotFound').then((module) => ({ default: module.NotFound }))
+);
+const NoPermission = createLazyComponent(() =>
+  import('./pages/NoPermission').then((module) => ({ default: module.NoPermission }))
+);
 
 // Lazy Load Heavy Pages
 const PrivateSpaceDashboard = createLazyComponent(
@@ -217,21 +240,17 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkAuth = async () => {
       console.log('🔐 Starting auth check...');
-      const token = localStorage.getItem('auth_token');
-      console.log('🔑 Token found:', !!token);
-
-      if (token) {
-        try {
-          console.log('🌐 Calling getCurrentUser API...');
-          const userData = await apiService.getCurrentUser();
+      try {
+        console.log('🌐 Checking cookie-backed session...');
+        const userData = await apiService.getCurrentUser();
+        if (userData) {
           console.log('✅ User authenticated:', userData.displayName);
           setUser(userData);
-        } catch (e) {
-          console.error('❌ Session expired or invalid', e);
-          apiService.logout();
+        } else {
+          console.log('🚫 No active session');
         }
-      } else {
-        console.log('🚫 No token found, user not authenticated');
+      } catch (e) {
+        console.error('❌ Auth check failed', e);
       }
 
       console.log('🏁 Setting isAuthChecking to false');
@@ -302,30 +321,32 @@ const App: React.FC = () => {
 
   // Socket Connection
   useEffect(() => {
-    if (user && !socket) {
-      const newSocket = io(SOCKET_URL);
-      newSocket.on('connect', () => {
-        newSocket.emit('USER_CONNECTED', {
-          name: user.displayName,
-          id: user._id,
-          email: user.email,
-          photoURL: user.photoURL
-        });
-      });
-      newSocket.on('NEW_NOTIFICATION', (data: any) => {
-        if (data.type === 'private_message') {
-          toast.info(data.content);
-        }
-        window.dispatchEvent(new CustomEvent('sys_notification', { detail: data }));
-      });
-      setSocket(newSocket);
-    } else if (!user && socket) {
-      socket.emit('LOGOUT');
-      socket.disconnect();
+    if (!user) {
       setSocket(null);
+      return;
     }
+
+    const newSocket = io(SOCKET_URL);
+    newSocket.on('connect', () => {
+      newSocket.emit('USER_CONNECTED', {
+        name: user.displayName,
+        id: user._id,
+        email: user.email,
+        photoURL: user.photoURL
+      });
+    });
+    newSocket.on('NEW_NOTIFICATION', (data: any) => {
+      if (data.type === 'private_message') {
+        toast.info(data.content);
+      }
+      window.dispatchEvent(new CustomEvent('sys_notification', { detail: data }));
+    });
+
+    setSocket(newSocket);
+
     return () => {
-      if (socket) socket.disconnect();
+      newSocket.removeAllListeners();
+      newSocket.disconnect();
     };
   }, [user]);
 
@@ -337,7 +358,6 @@ const App: React.FC = () => {
   const handleLogout = () => {
     apiService.logout();
     setUser(null);
-    localStorage.removeItem('auth_token');
     localStorage.removeItem('googleInfo');
     setIsLoginModalOpen(true);
     navigate('/');
@@ -650,11 +670,13 @@ const App: React.FC = () => {
         title={t.delete.confirmTitle}
       />
 
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-        onLoginSuccess={handleLoginSuccess}
-      />
+      {isLoginModalOpen && (
+        <LoginModal
+          isOpen
+          onClose={() => setIsLoginModalOpen(false)}
+          onLoginSuccess={handleLoginSuccess}
+        />
+      )}
     </>
   );
 };

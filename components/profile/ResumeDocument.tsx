@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { apiService } from '../../services/api';
@@ -139,7 +139,7 @@ export const ResumeDocument = React.forwardRef<HTMLDivElement, ResumeDocumentPro
     const [isLoading, setIsLoading] = useState(true);
     const [targetProfile, setTargetProfile] = useState<string>(baseEmail);
     const [currentSlug, setCurrentSlug] = useState<string>(parsedUser);
-    const [hasInitializedDefault, setHasInitializedDefault] = useState(false);
+    const hasInitializedDefaultRef = useRef(false);
     const [resumeList, setResumeList] = useState<
       Array<{ slug: string; title: string; user: string; isHomepage?: boolean }>
     >([]);
@@ -236,7 +236,7 @@ export const ResumeDocument = React.forwardRef<HTMLDivElement, ResumeDocumentPro
     }, [currentUser]);
 
     useEffect(() => {
-      setHasInitializedDefault(false);
+      hasInitializedDefaultRef.current = false;
     }, [targetProfile]);
 
     useEffect(() => {
@@ -250,10 +250,6 @@ export const ResumeDocument = React.forwardRef<HTMLDivElement, ResumeDocumentPro
       }
     }, [parsedUser, baseEmail, currentUser]);
 
-    useEffect(() => {
-      loadResumeAndList();
-    }, [currentSlug]);
-
     const processResumeList = (list: any[], profile: string) => {
       return list.filter(
         (item) =>
@@ -261,7 +257,7 @@ export const ResumeDocument = React.forwardRef<HTMLDivElement, ResumeDocumentPro
       );
     };
 
-    const loadResumeAndList = async () => {
+    const loadResumeAndList = useCallback(async () => {
       setIsLoading(true);
       try {
         const list = await apiService.getResumeList(targetProfile);
@@ -270,8 +266,8 @@ export const ResumeDocument = React.forwardRef<HTMLDivElement, ResumeDocumentPro
 
         if (processed.length > 0) {
           let activeSlug = currentSlug;
-          if (!hasInitializedDefault) {
-            setHasInitializedDefault(true);
+          if (!hasInitializedDefaultRef.current) {
+            hasInitializedDefaultRef.current = true;
             const homepageItem = processed.find((item) => item.isHomepage);
             if (
               activeSlug &&
@@ -318,7 +314,11 @@ export const ResumeDocument = React.forwardRef<HTMLDivElement, ResumeDocumentPro
       } finally {
         setIsLoading(false);
       }
-    };
+    }, [currentSlug, targetProfile]);
+
+    useEffect(() => {
+      void loadResumeAndList();
+    }, [loadResumeAndList]);
 
     const formatProfileName = (name: string) => {
       if (!name) return '';

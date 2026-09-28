@@ -1,52 +1,12 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import * as echarts from 'echarts';
+import React, { useState, useEffect, useRef } from 'react';
+
 import L from 'leaflet';
 import { useTranslation } from '../i18n/LanguageContext';
 import { apiService } from '../services/api';
 import { Footprint, FootprintStats, Theme } from '../types';
 import { toast } from '../components/Toast';
 import { createPortal } from 'react-dom';
-
-// Stable Aliyun DataV Atlas GeoJSON for China
-const CHINA_GEOJSON_URL = 'https://geo.datav.aliyun.com/areas_v3/bound/100000_full.json';
-
-// Standard Full Chinese Province Names (Matching GeoJSON features)
-const PROVINCES_CN = [
-  '北京市',
-  '天津市',
-  '上海市',
-  '重庆市',
-  '河北省',
-  '山西省',
-  '辽宁省',
-  '吉林省',
-  '黑龙江省',
-  '江苏省',
-  '浙江省',
-  '安徽省',
-  '福建省',
-  '江西省',
-  '山东省',
-  '河南省',
-  '湖北省',
-  '湖南省',
-  '广东省',
-  '海南省',
-  '四川省',
-  '贵州省',
-  '云南省',
-  '陕西省',
-  '甘肃省',
-  '青海省',
-  '台湾省',
-  '内蒙古自治区',
-  '广西壮族自治区',
-  '西藏自治区',
-  '宁夏回族自治区',
-  '新疆维吾尔自治区',
-  '香港特别行政区',
-  '澳门特别行政区'
-];
+import { FootprintMap, PROVINCES_CN } from '../components/footprint/FootprintMap';
 
 // Common Countries List
 const COUNTRIES_LIST = [
@@ -94,44 +54,6 @@ const COUNTRIES_LIST = [
   'Iceland'
 ];
 
-// English Name Mapping for ECharts
-const NAME_MAP_EN: Record<string, string> = {
-  北京市: 'Beijing',
-  天津市: 'Tianjin',
-  上海市: 'Shanghai',
-  重庆市: 'Chongqing',
-  河北省: 'Hebei',
-  山西省: 'Shanxi',
-  辽宁省: 'Liaoning',
-  吉林省: 'Jilin',
-  黑龙江省: 'Heilongjiang',
-  江苏省: 'Jiangsu',
-  浙江省: 'Zhejiang',
-  安徽省: 'Anhui',
-  福建省: 'Fujian',
-  江西省: 'Jiangxi',
-  山东省: 'Shandong',
-  河南省: 'Henan',
-  湖北省: 'Hubei',
-  湖南省: 'Hunan',
-  广东省: 'Guangdong',
-  海南省: 'Hainan',
-  四川省: 'Sichuan',
-  贵州省: 'Guizhou',
-  云南省: 'Yunnan',
-  陕西省: 'Shaanxi',
-  甘肃省: 'Gansu',
-  青海省: 'Qinghai',
-  台湾省: 'Taiwan',
-  内蒙古自治区: 'Inner Mongolia',
-  广西壮族自治区: 'Guangxi',
-  西藏自治区: 'Tibet',
-  宁夏回族自治区: 'Ningxia',
-  新疆维吾尔自治区: 'Xinjiang',
-  香港特别行政区: 'Hong Kong',
-  澳门特别行政区: 'Macau'
-};
-
 interface FootprintSpaceProps {
   theme?: Theme;
 }
@@ -162,12 +84,8 @@ export const FootprintSpace: React.FC<FootprintSpaceProps> = ({ theme }) => {
   });
   const [isUploading, setIsUploading] = useState(false);
 
-  const mapContainerRef = useRef<HTMLDivElement>(null); // For ECharts
-  const leafletMapRef = useRef<L.Map | null>(null); // For Leaflet Instance
-  const leafletContainerRef = useRef<HTMLDivElement>(null); // For Leaflet Div
   const pickerMapRef = useRef<L.Map | null>(null); // For Picker Map
   const pickerContainerRef = useRef<HTMLDivElement>(null); // For Picker Div
-  const chartInstance = useRef<echarts.ECharts | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -197,189 +115,6 @@ export const FootprintSpace: React.FC<FootprintSpaceProps> = ({ theme }) => {
       ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
       : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
   };
-
-  // --- ECharts China Map Logic ---
-  useEffect(() => {
-    let isMounted = true;
-
-    // Always dispose previous instance to prevent conflicts or memory leaks when switching modes
-    if (chartInstance.current) {
-      chartInstance.current.dispose();
-      chartInstance.current = null;
-    }
-
-    if (viewMode === 'CHINA' && mapContainerRef.current) {
-      const initChart = async () => {
-        try {
-          if (!mapContainerRef.current || !isMounted) return;
-
-          const chart = echarts.init(mapContainerRef.current);
-          chartInstance.current = chart;
-          chart.showLoading({ color: '#f59e0b', maskColor: 'rgba(0,0,0,0)' });
-
-          const response = await fetch(CHINA_GEOJSON_URL, { referrerPolicy: 'no-referrer' });
-          if (!response.ok) throw new Error('Network response was not ok');
-          const chinaJson = await response.json();
-
-          if (!isMounted) {
-            chart.dispose();
-            return;
-          }
-
-          echarts.registerMap('china', chinaJson);
-          chart.hideLoading();
-
-          const dataMap = PROVINCES_CN.map((provFull) => {
-            // Robust Matching: normalize names by removing common suffixes for comparison
-            const visited = stats.provinces.some((p) => {
-              if (!p) return false;
-              const cleanP = p.replace(/(省|市|自治区|特别行政区|壮族|回族|维吾尔)/g, '');
-              const cleanFull = provFull.replace(/(省|市|自治区|特别行政区|壮族|回族|维吾尔)/g, '');
-              return cleanFull.includes(cleanP) || cleanP.includes(cleanFull);
-            });
-
-            // FIX: Map name to English if current language is English
-            // This ensures ECharts matches the data value to the displayed (translated) region name
-            let mapName = provFull;
-            if (language === 'en' && NAME_MAP_EN[provFull]) {
-              mapName = NAME_MAP_EN[provFull];
-            }
-
-            return {
-              name: mapName,
-              value: visited ? 1 : 0,
-              itemStyle: {
-                areaColor: visited ? '#f59e0b' : theme === Theme.DARK ? '#1e293b' : '#e2e8f0',
-                borderColor: theme === Theme.DARK ? '#475569' : '#cbd5e1',
-                // Enhanced glow effect for visited provinces
-                shadowColor: visited ? 'rgba(245, 158, 11, 0.6)' : undefined,
-                shadowBlur: visited ? 15 : 0,
-                opacity: 1
-              }
-            };
-          });
-
-          chart.setOption({
-            backgroundColor: 'transparent',
-            tooltip: {
-              trigger: 'item',
-              formatter: (params: any) => {
-                return params.name;
-              }
-            },
-            geo: {
-              map: 'china',
-              roam: true,
-              layoutCenter: ['50%', '50%'],
-              layoutSize: '100%', // Fill the container
-              nameMap: language === 'en' ? NAME_MAP_EN : undefined,
-              label: {
-                show: true,
-                color: theme === Theme.DARK ? '#94a3b8' : '#64748b',
-                fontSize: 10
-              },
-              emphasis: {
-                itemStyle: {
-                  areaColor: '#f59e0b',
-                  shadowBlur: 20,
-                  shadowColor: 'rgba(245, 158, 11, 0.8)'
-                },
-                label: {
-                  show: true,
-                  color: '#fff'
-                }
-              },
-              select: {
-                itemStyle: {
-                  areaColor: '#f59e0b'
-                },
-                label: {
-                  color: '#fff'
-                }
-              },
-              itemStyle: {
-                areaColor: theme === Theme.DARK ? '#1e293b' : '#f1f5f9',
-                borderColor: theme === Theme.DARK ? '#475569' : '#94a3b8',
-                borderWidth: 1
-              },
-              regions: dataMap
-            },
-            series: []
-          });
-
-          window.addEventListener('resize', () => chart.resize());
-        } catch (err) {
-          console.error('Failed to load map', err);
-          if (chartInstance.current) chartInstance.current.hideLoading();
-        }
-      };
-
-      initChart();
-    }
-
-    // Cleanup function
-    return () => {
-      isMounted = false;
-      if (chartInstance.current) {
-        chartInstance.current.dispose();
-        chartInstance.current = null;
-      }
-    };
-  }, [viewMode, stats, theme, language]);
-
-  // --- Leaflet World Map Logic ---
-  useEffect(() => {
-    // Cleanup existing map if present to ensure clean slate
-    if (leafletMapRef.current) {
-      leafletMapRef.current.remove();
-      leafletMapRef.current = null;
-    }
-
-    if (viewMode === 'WORLD' && leafletContainerRef.current) {
-      const map = L.map(leafletContainerRef.current).setView([25, 10], 2);
-      leafletMapRef.current = map;
-
-      L.tileLayer(getTileLayer(), {
-        attribution: '&copy; CARTO',
-        subdomains: 'abcd',
-        maxZoom: 20
-      }).addTo(map);
-
-      // Robust Resize Observer to prevent blank maps
-      const resizeObserver = new ResizeObserver(() => {
-        map.invalidateSize();
-      });
-      resizeObserver.observe(leafletContainerRef.current);
-
-      // Add Markers
-      footprints.forEach((fp) => {
-        if (fp.location?.coordinates && fp.location.coordinates.length === 2) {
-          const [lng, lat] = fp.location.coordinates;
-          const marker = L.marker([lat, lng]).addTo(map);
-
-          const popupContent = `
-                    <div class="p-2 min-w-[200px]">
-                        ${fp.images && fp.images.length > 0 ? `<img src="${fp.images[0]}" class="w-full h-32 object-cover rounded-lg mb-2" />` : ''}
-                        <h4 class="font-bold text-sm text-slate-800">${fp.location.name}</h4>
-                        <div class="text-xs text-slate-500 mb-1">${fp.location.city || fp.location.country || ''}</div>
-                        <div class="text-[10px] text-slate-400 mb-1">${new Date(fp.visitDate).toLocaleDateString()}</div>
-                        <p class="text-xs text-slate-600 italic">"${fp.content || fp.mood}"</p>
-                    </div>
-                `;
-
-          marker.bindPopup(popupContent);
-        }
-      });
-
-      return () => {
-        resizeObserver.disconnect();
-        if (leafletMapRef.current) {
-          leafletMapRef.current.remove();
-          leafletMapRef.current = null;
-        }
-      };
-    }
-  }, [viewMode, footprints, theme]);
 
   // --- Add/Edit Modal Logic ---
   const handleOpenAdd = () => {
@@ -582,15 +317,13 @@ export const FootprintSpace: React.FC<FootprintSpaceProps> = ({ theme }) => {
 
       {/* Map Container - EXPANDED SIZE to fill space */}
       <div className="w-full h-[80vh] bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-2xl relative overflow-hidden">
-        {viewMode === 'CHINA' && (
-          <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }}></div>
-        )}
-        {viewMode === 'WORLD' && (
-          <div
-            ref={leafletContainerRef}
-            style={{ width: '100%', height: '100%', isolation: 'isolate', zIndex: 0 }}
-          ></div>
-        )}
+        <FootprintMap
+          mode={viewMode}
+          stats={stats}
+          footprints={footprints}
+          theme={theme}
+          language={language}
+        />
 
         {loading && (
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center z-10">

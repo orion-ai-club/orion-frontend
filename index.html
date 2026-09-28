@@ -18,114 +18,8 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sen:wght@400;700;800&family=Fira+Code:wght@400;500&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Noto+Serif+SC:wght@600;700&display=swap"
       rel="stylesheet"
     />
-    <script>
-      (function () {
-        try {
-          const savedTheme = localStorage.getItem('app_theme') || 'light';
-          document.documentElement.dataset.appTheme = savedTheme;
-
-          // 默认白色主题，仅当用户保存了 dark 时才启用暗黑模式
-          if (savedTheme === 'dark' && !location.pathname.startsWith('/captain-cabin')) {
-            document.documentElement.classList.add('dark');
-          } else {
-            document.documentElement.classList.remove('dark');
-          }
-        } catch (e) {}
-      })();
-    </script>
-    <style>
-      /* 关键：Splash Screen 优化 */
-      #pwa-splash {
-        position: fixed;
-        inset: 0;
-        z-index: 9999;
-        background-color: #020617;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        transition:
-          opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1),
-          visibility 0.8s;
-        pointer-events: auto;
-      }
-
-      /* 核心修改：仅在 1024px 以下（手机/平板）显示 */
-      @media (min-width: 1024px) {
-        #pwa-splash {
-          display: none !important;
-        }
-      }
-
-      #pwa-splash .logo-container {
-        position: relative;
-        width: 80px;
-        height: 80px;
-        margin-bottom: 40px;
-        animation: logo-pulse 2s ease-in-out infinite;
-      }
-
-      #pwa-splash .logo-container img {
-        width: 100%;
-        height: 100%;
-        filter: drop-shadow(0 0 15px rgba(14, 165, 233, 0.4));
-      }
-
-      #pwa-splash .loader-wrapper {
-        width: 160px;
-        height: 2px;
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 4px;
-        overflow: hidden;
-        position: relative;
-      }
-
-      #pwa-splash .loader-bar {
-        position: absolute;
-        height: 100%;
-        width: 50%;
-        background: linear-gradient(90deg, transparent, #0ea5e9, transparent);
-        animation: loader-slide 1.5s infinite ease-in-out;
-      }
-
-      #pwa-splash .status-text {
-        margin-top: 20px;
-        color: rgba(255, 255, 255, 0.3);
-        font-family: 'Fira Code', monospace;
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.3em;
-      }
-
-      @keyframes logo-pulse {
-        0%,
-        100% {
-          transform: scale(1);
-          opacity: 0.8;
-        }
-        50% {
-          transform: scale(1.05);
-          opacity: 1;
-        }
-      }
-
-      @keyframes loader-slide {
-        0% {
-          left: -100%;
-        }
-        100% {
-          left: 100%;
-        }
-      }
-
-      /* App 准备就绪后的隐藏状态 */
-      body.app-ready #pwa-splash {
-        opacity: 0;
-        visibility: hidden;
-        pointer-events: none;
-        transform: scale(0.95);
-      }
-    </style>
+    <link rel="stylesheet" href="/boot.css" />
+    <script src="/boot-theme.js"></script>
   </head>
   <body
     class="bg-milky-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-500 overflow-x-hidden"
@@ -141,24 +35,7 @@
     </div>
 
     <div id="root"></div>
-    <script>
-      (function () {
-        var root = document.getElementById('root');
-        if (!root) return;
-
-        var renderedPath = root.getAttribute('data-prerender-path');
-        if (!renderedPath) return;
-
-        var normalize = function (value) {
-          if (!value || value === '/') return '/';
-          return value.replace(/\/+$/, '') || '/';
-        };
-
-        if (normalize(renderedPath) !== normalize(window.location.pathname)) {
-          root.replaceChildren();
-        }
-      })();
-    </script>
+    <script src="/prerender-guard.js"></script>
     <script type="module" src="index.tsx"></script>
   </body>
 </html>

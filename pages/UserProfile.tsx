@@ -84,7 +84,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) 
       }
     };
     fetchLatest();
-  }, []);
+  }, [onUpdateUser]);
 
   // Fetch permissions when permission modal opens
   useEffect(() => {
@@ -99,7 +99,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) 
       };
       fetchPerms();
     }
-  }, [isPermModalOpen, requestType]);
+  }, [isPermModalOpen, requestType, backendPermissions.length]);
 
   // Fetch roles dynamically when role modal opens
   useEffect(() => {
@@ -114,7 +114,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) 
       };
       fetchRoles();
     }
-  }, [isPermModalOpen, requestType]);
+  }, [isPermModalOpen, requestType, availableRoles.length]);
 
   // Update local state when user prop changes (e.g. after refresh)
   useEffect(() => {
@@ -275,9 +275,8 @@ export const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) 
     setIsPermModalOpen(true);
   };
 
-  const handleLogout = () => {
-    apiService.logout();
-    localStorage.removeItem('auth_token');
+  const handleLogout = async () => {
+    await apiService.logout();
     localStorage.removeItem('googleInfo');
     window.location.href = '/';
   };

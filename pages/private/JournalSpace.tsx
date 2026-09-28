@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { TodoWidget } from '../../components/private/TodoWidget';
 import { PrivateBlogFeed } from '../../components/private/PrivateBlogFeed';
@@ -99,7 +99,7 @@ export const JournalSpace: React.FC = () => {
   }, [searchQuery, search, setSearchParams]);
 
   // Fetch Private Data
-  const fetchPrivateBlogs = async () => {
+  const fetchPrivateBlogs = useCallback(async () => {
     try {
       const { data, pagination } = await apiService.getPrivatePosts(page, 10, search, tag);
       setPrivateBlogs(data);
@@ -107,13 +107,13 @@ export const JournalSpace: React.FC = () => {
     } catch (e) {
       console.error(e);
     }
-  };
+  }, [page, search, tag]);
 
   // Fetch Public Data
-  const fetchPublicLogs = async () => {
+  const fetchPublicLogs = useCallback(async () => {
     setIsPublicLoading(true);
     try {
-      const { data, pagination } = await apiService.getPosts(page, 10, search, tag); // Pass tag here too
+      const { data, pagination } = await apiService.getPosts(page, 10, search, tag);
       setPublicBlogs(data);
       setPublicPagination(pagination);
     } catch (e) {
@@ -121,12 +121,12 @@ export const JournalSpace: React.FC = () => {
     } finally {
       setIsPublicLoading(false);
     }
-  };
+  }, [page, search, tag]);
 
   useEffect(() => {
-    if (logSource === 'private') fetchPrivateBlogs();
-    else fetchPublicLogs();
-  }, [page, search, tag, logSource]);
+    if (logSource === 'private') void fetchPrivateBlogs();
+    else void fetchPublicLogs();
+  }, [logSource, fetchPrivateBlogs, fetchPublicLogs]);
 
   const handlePageChange = (newPage: number) => {
     setSearchParams((prev) => {
