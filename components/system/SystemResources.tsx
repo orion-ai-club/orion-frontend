@@ -9,12 +9,7 @@ import { DeleteModal } from '../DeleteModal';
 import { useLocation } from 'react-router-dom';
 import { R2UsageDashboard } from './R2UsageDashboard';
 import { R2FilePreviewModal } from './R2FilePreviewModal';
-import {
-  getR2FileIcon,
-  getR2FileName,
-  getR2LanguageLabel,
-  isR2Previewable
-} from './r2FileUtils';
+import { getR2FileIcon, getR2FileName, getR2LanguageLabel, isR2Previewable } from './r2FileUtils';
 
 export const SystemResources: React.FC = () => {
   const { t } = useTranslation();
@@ -768,7 +763,9 @@ export const SystemResources: React.FC = () => {
                             className="min-w-0 flex items-center gap-3 text-left"
                             title={canPreview ? `Preview ${name}` : `File details: ${name}`}
                           >
-                            <div className={`w-10 h-10 rounded-xl ${icon.bg} ${icon.tone} flex items-center justify-center shrink-0`}>
+                            <div
+                              className={`w-10 h-10 rounded-xl ${icon.bg} ${icon.tone} flex items-center justify-center shrink-0`}
+                            >
                               <i className={`fas ${icon.icon} text-lg`}></i>
                             </div>
                             <div className="min-w-0">
@@ -797,7 +794,9 @@ export const SystemResources: React.FC = () => {
                               className="w-8 h-8 rounded-lg text-slate-400 hover:text-sky-500 hover:bg-sky-500/10 transition-colors flex items-center justify-center"
                               title={canPreview ? 'Preview' : 'File details'}
                             >
-                              <i className={`fas ${canPreview ? 'fa-eye' : 'fa-circle-info'} text-xs`}></i>
+                              <i
+                                className={`fas ${canPreview ? 'fa-eye' : 'fa-circle-info'} text-xs`}
+                              ></i>
                             </button>
                             {file.url && (
                               <a

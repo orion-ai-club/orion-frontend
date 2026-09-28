@@ -115,11 +115,16 @@ export const R2FilePreviewModal: React.FC<R2FilePreviewModalProps> = ({ file, on
     >
       <div className="w-full max-w-7xl h-[92vh] bg-white dark:bg-[#0b1220] border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
         <header className="h-16 px-4 md:px-5 border-b border-slate-200 dark:border-slate-800 flex items-center gap-3 bg-slate-50/90 dark:bg-slate-950/70">
-          <div className={`w-10 h-10 rounded-xl ${icon.bg} ${icon.tone} flex items-center justify-center shrink-0`}>
+          <div
+            className={`w-10 h-10 rounded-xl ${icon.bg} ${icon.tone} flex items-center justify-center shrink-0`}
+          >
             <i className={`fas ${icon.icon} text-lg`}></i>
           </div>
           <div className="min-w-0 flex-1">
-            <div className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate" title={name}>
+            <div
+              className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate"
+              title={name}
+            >
               {name}
             </div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono truncate">
@@ -166,7 +171,11 @@ export const R2FilePreviewModal: React.FC<R2FilePreviewModalProps> = ({ file, on
         <main className="flex-1 min-h-0 bg-slate-100 dark:bg-[#060a12] overflow-hidden">
           {kind === 'image' && url && (
             <div className="w-full h-full p-6 flex items-center justify-center bg-[radial-gradient(#64748b25_1px,transparent_1px)] [background-size:14px_14px]">
-              <img src={url} alt={name} className="max-w-full max-h-full object-contain rounded-lg shadow-xl" />
+              <img
+                src={url}
+                alt={name}
+                className="max-w-full max-h-full object-contain rounded-lg shadow-xl"
+              />
             </div>
           )}
 
@@ -178,7 +187,9 @@ export const R2FilePreviewModal: React.FC<R2FilePreviewModalProps> = ({ file, on
 
           {kind === 'audio' && url && (
             <div className="w-full h-full flex flex-col items-center justify-center gap-6 p-8">
-              <div className={`w-24 h-24 rounded-3xl ${icon.bg} ${icon.tone} flex items-center justify-center`}>
+              <div
+                className={`w-24 h-24 rounded-3xl ${icon.bg} ${icon.tone} flex items-center justify-center`}
+              >
                 <i className={`fas ${icon.icon} text-5xl`}></i>
               </div>
               <audio src={url} controls className="w-full max-w-xl" />
@@ -230,7 +241,9 @@ export const R2FilePreviewModal: React.FC<R2FilePreviewModalProps> = ({ file, on
                           <td className="select-none sticky left-0 w-14 min-w-14 px-3 text-right align-top text-slate-600 border-r border-white/5 bg-[#0d1117]">
                             {index + 1}
                           </td>
-                          <td className="px-4 whitespace-pre align-top text-slate-200">{line || ' '}</td>
+                          <td className="px-4 whitespace-pre align-top text-slate-200">
+                            {line || ' '}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -242,13 +255,16 @@ export const R2FilePreviewModal: React.FC<R2FilePreviewModalProps> = ({ file, on
 
           {kind === 'unsupported' && (
             <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-8 text-center">
-              <div className={`w-24 h-24 rounded-3xl ${icon.bg} ${icon.tone} flex items-center justify-center`}>
+              <div
+                className={`w-24 h-24 rounded-3xl ${icon.bg} ${icon.tone} flex items-center justify-center`}
+              >
                 <i className={`fas ${icon.icon} text-5xl`}></i>
               </div>
               <div>
                 <h4 className="font-bold text-slate-800 dark:text-slate-100">{name}</h4>
                 <p className="text-sm text-slate-500 mt-1">
-                  No inline viewer is available for this file type, but the object is still listed and accessible.
+                  No inline viewer is available for this file type, but the object is still listed
+                  and accessible.
                 </p>
               </div>
               {url && (
