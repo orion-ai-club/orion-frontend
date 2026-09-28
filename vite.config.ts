@@ -84,14 +84,46 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: (id) => {
-            if (id.includes('node_modules')) {
-              if (id.includes('@tiptap') || id.includes('prosemirror-')) return 'journal-editor';
-              if (id.includes('katex')) return 'journal-math';
-              // Keep React and its consumers together: pnpm peer suffixes contain
-              // 'react' too, so substring-based grouping creates circular runtime chunks.
-              if (id.includes('highlight.js') || id.includes('leaflet')) return 'vendor-ui';
-              return 'vendor';
+            if (!id.includes('node_modules')) return;
+
+            if (id.includes('@tiptap') || id.includes('prosemirror-')) return 'journal-editor';
+            if (id.includes('katex')) return 'journal-math';
+            if (id.includes('firebase') || id.includes('@firebase')) return 'vendor-firebase';
+            if (id.includes('echarts') || id.includes('zrender') || id.includes('recharts')) {
+              return 'vendor-charts';
             }
+            if (id.includes('leaflet')) return 'vendor-maps';
+            if (
+              id.includes('socket.io-client') ||
+              id.includes('engine.io-client') ||
+              id.includes('/socket.io-parser/') ||
+              id.includes('/engine.io-parser/')
+            ) {
+              return 'vendor-realtime';
+            }
+            if (id.includes('react-router')) return 'vendor-router';
+            if (
+              id.includes('/react/') ||
+              id.includes('/react-dom/') ||
+              id.includes('/scheduler/') ||
+              id.includes('react-helmet-async') ||
+              id.includes('/react-is/')
+            ) {
+              return 'vendor-react';
+            }
+            if (
+              id.includes('lucide-react') ||
+              id.includes('@fortawesome') ||
+              id.includes('remixicon')
+            ) {
+              return 'vendor-icons';
+            }
+            if (id.includes('marked') || id.includes('dompurify') || id.includes('highlight.js')) {
+              return 'vendor-content';
+            }
+
+            // Keep lazy-route-only dependencies out of an always-loaded monolithic vendor chunk.
+            return;
           }
         }
       }

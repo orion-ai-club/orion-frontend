@@ -13,26 +13,49 @@ import { Theme, PageView, User, BlogPost, ChatUser, PERM_KEYS, can } from './typ
 import { useTranslation } from './i18n/LanguageContext';
 import { Helmet } from 'react-helmet-async';
 
-// New Component Imports
-import { LoginModal } from './components/LoginModal';
-import { ResumeView } from './components/ResumeView'; // Used inside Home Route
+// Shared shell imports stay eager; route/modal content is loaded on demand below.
 import { Footer } from './components/Footer';
 import { PageLoader } from './components/PageLoader';
 import { AccessRestricted } from './components/AccessRestricted';
 import { InstallPwa } from './components/InstallPwa';
-
-// --- PAGES IMPORTS (Moved from components) ---
-import { BlogList } from './pages/BlogList';
-import { ArticleView } from './pages/ArticleView';
-import { PortfolioPage } from './pages/PortfolioPage';
-import { UserProfile } from './pages/UserProfile';
-import { SettingsPage } from './pages/SettingsPage';
-import { ChatRoom } from './pages/ChatRoom';
-import { AuditLogViewer } from './pages/AuditLogViewer';
-import { SystemManagement } from './pages/SystemManagement';
-import { NotFound } from './pages/NotFound';
-import { NoPermission } from './pages/NoPermission';
 import { createLazyComponent } from './components/LazyLoader';
+
+const LoginModal = createLazyComponent(() =>
+  import('./components/LoginModal').then((module) => ({ default: module.LoginModal }))
+);
+const ResumeView = createLazyComponent(() =>
+  import('./components/ResumeView').then((module) => ({ default: module.ResumeView }))
+);
+const BlogList = createLazyComponent(() =>
+  import('./pages/BlogList').then((module) => ({ default: module.BlogList }))
+);
+const ArticleView = createLazyComponent(() =>
+  import('./pages/ArticleView').then((module) => ({ default: module.ArticleView }))
+);
+const PortfolioPage = createLazyComponent(() =>
+  import('./pages/PortfolioPage').then((module) => ({ default: module.PortfolioPage }))
+);
+const UserProfile = createLazyComponent(() =>
+  import('./pages/UserProfile').then((module) => ({ default: module.UserProfile }))
+);
+const SettingsPage = createLazyComponent(() =>
+  import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage }))
+);
+const ChatRoom = createLazyComponent(() =>
+  import('./pages/ChatRoom').then((module) => ({ default: module.ChatRoom }))
+);
+const AuditLogViewer = createLazyComponent(() =>
+  import('./pages/AuditLogViewer').then((module) => ({ default: module.AuditLogViewer }))
+);
+const SystemManagement = createLazyComponent(() =>
+  import('./pages/SystemManagement').then((module) => ({ default: module.SystemManagement }))
+);
+const NotFound = createLazyComponent(() =>
+  import('./pages/NotFound').then((module) => ({ default: module.NotFound }))
+);
+const NoPermission = createLazyComponent(() =>
+  import('./pages/NoPermission').then((module) => ({ default: module.NoPermission }))
+);
 
 // Lazy Load Heavy Pages
 const PrivateSpaceDashboard = createLazyComponent(
