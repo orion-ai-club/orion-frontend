@@ -51,9 +51,6 @@ const SOCKET_URL = 'https://api.samyao.me';
 
 declare global {
   interface Window {
-    marked: {
-      parse: (text: string) => string;
-    };
     hljs: any;
   }
 }

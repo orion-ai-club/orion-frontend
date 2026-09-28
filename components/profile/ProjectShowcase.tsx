@@ -14,6 +14,7 @@ import { useTranslation } from '../../i18n/LanguageContext';
 import { toast } from '../Toast';
 import { DeleteModal } from '../DeleteModal';
 import { R2ImageSelectorModal } from '../R2ImageSelectorModal';
+import { renderSafeMarkdown, safeExternalUrl } from '../../utils/security';
 
 interface ProjectShowcaseProps {
   currentUser?: User | null;
@@ -314,7 +315,7 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
       message: 'Connecting to AI rewrite'
     });
 
-    const categories =
+    const categories: PortfolioProjectCategory[] =
       Array.isArray(project.categories) && project.categories.length > 0
         ? project.categories
         : project.category
@@ -596,21 +597,28 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
   };
 
   const handleOpenLocal = () => {
-    // Update URL to trigger Iframe view via Effect
-    // This allows browser back button to work naturally
+    const url = safeExternalUrl(demoProject?.demoUrl);
+    if (!url) {
+      toast.error('Invalid demo URL.');
+      return;
+    }
+
+    // Update URL to trigger Iframe view via Effect.
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev);
       if (demoProject) newParams.set('demo', demoProject._id);
       return newParams;
     });
-    // Optimistically update state
     setViewMode('IFRAME');
     setIframeLoading(true);
   };
 
   const handleOpenNewTab = () => {
-    if (demoProject?.demoUrl) {
-      window.open(demoProject.demoUrl, '_blank');
+    const url = safeExternalUrl(demoProject?.demoUrl);
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      toast.error('Invalid demo URL.');
     }
     // Just close modal, don't update URL since we aren't showing anything inside the app
     closeDemoModal(false);
@@ -629,6 +637,8 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
       });
     }
   };
+
+  const safeDemoUrl = safeExternalUrl(demoProject?.demoUrl);
 
   if (isLoading) {
     return (
@@ -1363,6 +1373,7 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
 
       {viewMode === 'IFRAME' &&
         demoProject &&
+        safeDemoUrl &&
         createPortal(
           <div className="fixed inset-0 z-[10000] flex flex-col bg-slate-900 animate-fade-in">
             {/* Header */}
@@ -1380,7 +1391,7 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
               </div>
               <div className="flex items-center gap-3">
                 <a
-                  href={demoProject.demoUrl}
+                  href={safeDemoUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="text-slate-400 hover:text-primary-400 text-xs font-bold uppercase tracking-wider flex items-center gap-2 px-3 py-1.5 rounded hover:bg-slate-800 transition-colors"
@@ -1408,10 +1419,12 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
                 </div>
               )}
               <iframe
-                src={demoProject.demoUrl}
+                src={safeDemoUrl}
                 className="w-full h-full border-0 relative z-10"
                 onLoad={() => setIframeLoading(false)}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads allow-presentation"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />
             </div>
@@ -1819,14 +1832,9 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
                       <div className="prose dark:prose-invert prose-slate max-w-none prose-sm">
                         <div
                           dangerouslySetInnerHTML={{
-                            __html: window.marked
-                              ? window.marked.parse(
-                                  getLocalized(activeDetailProject, 'description') || ''
-                                )
-                              : (getLocalized(activeDetailProject, 'description') || '').replace(
-                                  /\n/g,
-                                  '<br/>'
-                                )
+                            __html: renderSafeMarkdown(
+                              getLocalized(activeDetailProject, 'description') || ''
+                            )
                           }}
                         />
                       </div>

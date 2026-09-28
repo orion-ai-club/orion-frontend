@@ -16,7 +16,7 @@ const FALLBACK_REMOTE_API = 'https://api.samyao.me/api';
  */
 export const API_BASE_URL = import.meta.env.DEV
   ? import.meta.env.VITE_API_URL || '/api'
-  : FALLBACK_REMOTE_API;
+  : import.meta.env.VITE_API_URL || FALLBACK_REMOTE_API;
 
 console.log(`🚀 Current API Target: ${API_BASE_URL}`);
 
@@ -115,7 +115,6 @@ export async function fetchEventStream<T>(
 
   return finalResult;
 }
-
 
 /**
  * 通用的 Fetch 客户端封装

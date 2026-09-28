@@ -7,6 +7,7 @@ import { toast } from '../../components/Toast';
 import { DeleteModal } from '../../components/DeleteModal';
 import { R2ImageSelectorModal } from '../../components/R2ImageSelectorModal';
 import { createPortal } from 'react-dom';
+import { renderSafeMarkdown } from '../../utils/security';
 
 // --- Types for Web Speech API ---
 declare global {
@@ -60,17 +61,10 @@ const BrainMessageItem = React.memo(
     const contentRef = useRef<HTMLDivElement>(null);
 
     // 1. Memoize Markdown Parsing to prevent re-parsing static history
-    const htmlContent = useMemo(() => {
-      if (!msg.content) return '';
-      if (window.marked) {
-        try {
-          return window.marked.parse(msg.content);
-        } catch (e) {
-          return msg.content;
-        }
-      }
-      return msg.content;
-    }, [msg.content]);
+    const htmlContent = useMemo(
+      () => (msg.content ? renderSafeMarkdown(msg.content) : ''),
+      [msg.content]
+    );
 
     // 2. Scoped Syntax Highlighting: Only highlight code blocks within THIS message
     useEffect(() => {

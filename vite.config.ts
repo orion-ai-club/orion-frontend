@@ -15,13 +15,13 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: 'https://api.samyao.me',
           changeOrigin: true,
-          secure: false
+          secure: true
         }
       }
     },
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src')
+        '@': path.resolve(__dirname, '.')
       }
     },
     plugins: [
