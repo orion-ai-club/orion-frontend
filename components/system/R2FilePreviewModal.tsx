@@ -218,8 +218,8 @@ export const R2FilePreviewModal: React.FC<R2FilePreviewModalProps> = ({ file, on
             </div>
           )}
 
-          {kind === 'pdf' && (
-            textLoading ? (
+          {kind === 'pdf' &&
+            (textLoading ? (
               <div className="w-full h-full flex items-center justify-center text-slate-500">
                 <i className="fas fa-circle-notch fa-spin mr-2"></i> Loading PDF…
               </div>
@@ -246,8 +246,7 @@ export const R2FilePreviewModal: React.FC<R2FilePreviewModalProps> = ({ file, on
                   </a>
                 )}
               </div>
-            )
-          )}
+            ))}
 
           {(kind === 'code' || kind === 'text') && (
             <div className="w-full h-full flex flex-col bg-[#0d1117] text-slate-200">

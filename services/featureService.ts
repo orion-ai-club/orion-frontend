@@ -468,10 +468,9 @@ export const featureService = {
     const headers: HeadersInit = {};
     if (token) headers['x-auth-token'] = token;
 
-    const response = await fetch(
-      `${API_BASE_URL}/upload/object?key=${encodeURIComponent(key)}`,
-      { headers }
-    );
+    const response = await fetch(`${API_BASE_URL}/upload/object?key=${encodeURIComponent(key)}`, {
+      headers
+    });
 
     if (!response.ok) {
       throw new Error(`Failed to read R2 object: ${response.status}`);
