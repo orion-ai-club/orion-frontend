@@ -275,9 +275,8 @@ export const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) 
     setIsPermModalOpen(true);
   };
 
-  const handleLogout = () => {
-    apiService.logout();
-    localStorage.removeItem('auth_token');
+  const handleLogout = async () => {
+    await apiService.logout();
     localStorage.removeItem('googleInfo');
     window.location.href = '/';
   };

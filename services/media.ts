@@ -86,13 +86,9 @@ const uploadToR2 = async (file: File, options?: UploadOptions): Promise<string> 
   // 2. Append file LAST
   formData.append('files', file); // Field name MUST be 'files'
 
-  const token = localStorage.getItem('auth_token');
-  const headers: HeadersInit = {};
-  if (token) headers['x-auth-token'] = token;
-
   const response = await fetch(`${API_BASE_URL}/upload`, {
     method: 'POST',
-    headers,
+    credentials: 'include',
     body: formData
   });
 

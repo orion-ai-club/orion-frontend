@@ -240,21 +240,17 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkAuth = async () => {
       console.log('🔐 Starting auth check...');
-      const token = localStorage.getItem('auth_token');
-      console.log('🔑 Token found:', !!token);
-
-      if (token) {
-        try {
-          console.log('🌐 Calling getCurrentUser API...');
-          const userData = await apiService.getCurrentUser();
+      try {
+        console.log('🌐 Checking cookie-backed session...');
+        const userData = await apiService.getCurrentUser();
+        if (userData) {
           console.log('✅ User authenticated:', userData.displayName);
           setUser(userData);
-        } catch (e) {
-          console.error('❌ Session expired or invalid', e);
-          apiService.logout();
+        } else {
+          console.log('🚫 No active session');
         }
-      } else {
-        console.log('🚫 No token found, user not authenticated');
+      } catch (e) {
+        console.error('❌ Auth check failed', e);
       }
 
       console.log('🏁 Setting isAuthChecking to false');
@@ -362,7 +358,6 @@ const App: React.FC = () => {
   const handleLogout = () => {
     apiService.logout();
     setUser(null);
-    localStorage.removeItem('auth_token');
     localStorage.removeItem('googleInfo');
     setIsLoginModalOpen(true);
     navigate('/');
