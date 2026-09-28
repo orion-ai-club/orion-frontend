@@ -8,6 +8,8 @@ import { toast } from '../Toast';
 import { DeleteModal } from '../DeleteModal';
 import { useLocation } from 'react-router-dom';
 import { R2UsageDashboard } from './R2UsageDashboard';
+import { R2FilePreviewModal } from './R2FilePreviewModal';
+import { getR2FileIcon, getR2FileName, getR2LanguageLabel, isR2Previewable } from './r2FileUtils';
 
 export const SystemResources: React.FC = () => {
   const { t } = useTranslation();
@@ -39,8 +41,9 @@ export const SystemResources: React.FC = () => {
   const [loadingR2Usage, setLoadingR2Usage] = useState(false);
 
   // R2 Navigation State
-  const [r2Type, setR2Type] = useState<'resource' | 'backup'>('resource');
+  const [r2Type, setR2Type] = useState<'all' | 'resource' | 'backup'>('all');
   const [currentFolder, setCurrentFolder] = useState<string>(''); // Current subfolder path (e.g. "2023-12-25/")
+  const [previewFile, setPreviewFile] = useState<any | null>(null);
 
   // Common Delete State
   const [fileToDelete, setFileToDelete] = useState<{
@@ -107,7 +110,7 @@ export const SystemResources: React.FC = () => {
     setLoadingR2(true);
     try {
       // Call updated endpoint with folder & type
-      const res: any = await featureService.getR2Files(50, cursor, r2Type, currentFolder);
+      const res: any = await featureService.getR2Files(200, cursor, r2Type, currentFolder);
       if (res.success) {
         const incomingFiles = res.data.files || [];
         const incomingFolders = res.data.folders || [];
@@ -189,6 +192,7 @@ export const SystemResources: React.FC = () => {
 
   // --- Context Menu Logic ---
   const handleContextMenu = (e: React.MouseEvent, folderName?: string) => {
+    if (activeTab === 'R2' && r2Type === 'all') return;
     e.preventDefault();
     e.stopPropagation();
     setContextMenu({
@@ -221,12 +225,17 @@ export const SystemResources: React.FC = () => {
   };
 
   const openCreateFolderModal = () => {
+    if (r2Type === 'all') return;
     setIsCreateFolderModalOpen(true);
     setContextMenu({ ...contextMenu, visible: false });
   };
 
   // --- R2 Upload Logic (Presigned) ---
   const handleR2UploadClick = () => {
+    if (r2Type === 'all') {
+      toast.error('Switch to Resources or Backups before uploading.');
+      return;
+    }
     if (r2FileInputRef.current) r2FileInputRef.current.click();
   };
 
@@ -598,13 +607,24 @@ export const SystemResources: React.FC = () => {
                       {t.system.r2.title}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {r2Files.length} Files, {r2Folders.length} {t.system.r2.folders}
+                      {r2Type === 'all' && r2Usage
+                        ? `${r2Usage.total.count} objects in bucket`
+                        : `${r2Files.length} files · ${r2Folders.length} folders`}
                     </p>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  {/* Type Switcher */}
+                  {/* Scope Switcher */}
                   <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+                    <button
+                      onClick={() => {
+                        setR2Type('all');
+                        setCurrentFolder('');
+                      }}
+                      className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase transition-all ${r2Type === 'all' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500'}`}
+                    >
+                      All Objects
+                    </button>
                     <button
                       onClick={() => {
                         setR2Type('resource');
@@ -634,19 +654,21 @@ export const SystemResources: React.FC = () => {
                     <i className="fas fa-sync"></i>
                   </button>
 
-                  {/* Upload Button */}
-                  <button
-                    onClick={handleR2UploadClick}
-                    disabled={isUploading}
-                    className="px-4 bg-emerald-500 text-white rounded-lg text-xs font-bold uppercase hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isUploading ? (
-                      <i className="fas fa-circle-notch fa-spin"></i>
-                    ) : (
-                      <i className="fas fa-upload"></i>
-                    )}
-                    {t.system.r2.upload}
-                  </button>
+                  {/* Upload is intentionally scoped to managed prefixes, not bucket root. */}
+                  {r2Type !== 'all' && (
+                    <button
+                      onClick={handleR2UploadClick}
+                      disabled={isUploading}
+                      className="px-4 bg-emerald-500 text-white rounded-lg text-xs font-bold uppercase hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isUploading ? (
+                        <i className="fas fa-circle-notch fa-spin"></i>
+                      ) : (
+                        <i className="fas fa-upload"></i>
+                      )}
+                      {t.system.r2.upload}
+                    </button>
+                  )}
                   <input
                     type="file"
                     multiple
@@ -711,79 +733,103 @@ export const SystemResources: React.FC = () => {
                 </div>
               )}
 
-              {/* Files Section */}
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {r2Files.map((file) => (
-                  <div
-                    key={file.id || file.key || file.name}
-                    className="group relative aspect-square bg-white dark:bg-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-slate-200 dark:border-slate-700"
-                  >
-                    <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-900 relative">
-                      {/* Pattern background for transparency */}
-                      <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:8px_8px]"></div>
-
-                      {file.type === 'image' ||
-                      /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(file.name) ? (
-                        <img
-                          src={file.url}
-                          alt={file.name}
-                          className="w-full h-full object-contain p-2"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center text-slate-400">
-                          <i
-                            className={`fas ${file.name.endsWith('.json') ? 'fa-file-code' : 'fa-file-alt'} text-3xl mb-2`}
-                          ></i>
-                          <span className="text-[10px] font-bold uppercase truncate max-w-[80%]">
-                            {file.name.split('.').pop()}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Overlay Info */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-between p-3">
-                      <div className="flex justify-end transform translate-y-[-10px] group-hover:translate-y-0 transition-transform">
-                        <button
-                          // FIX: Pass valid ID provided by backend, falling back to key/name
-                          onClick={() =>
-                            setFileToDelete({ id: file.id || file.key || file.name, type: 'R2' })
-                          }
-                          className="w-8 h-8 rounded-full bg-red-500/90 hover:bg-red-600 text-white flex items-center justify-center shadow-lg backdrop-blur-sm transition-transform hover:scale-110"
-                          title={t.system.common.delete}
-                        >
-                          <i className="fas fa-trash-alt text-xs"></i>
-                        </button>
-                      </div>
-
-                      <div className="transform translate-y-[10px] group-hover:translate-y-0 transition-transform">
-                        <div
-                          className="text-white text-xs font-bold truncate mb-1"
-                          title={file.name}
-                        >
-                          {file.name}
-                        </div>
-                        <div className="flex justify-between items-end text-[10px] text-white/70 font-mono border-t border-white/10 pt-2">
-                          <div className="flex flex-col">
-                            <span>{formatBytes(file.size)}</span>
-                            <span>{new Date(file.lastModified).toLocaleDateString()}</span>
-                          </div>
-                          <a
-                            href={file.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-white hover:text-blue-300 transition-colors"
-                            title="Open/Download"
-                          >
-                            <i className="fas fa-external-link-alt"></i>
-                          </a>
-                        </div>
-                      </div>
-                    </div>
+              {/* Files: drive-style rows so every object has a visible identity and action. */}
+              {r2Files.length > 0 && (
+                <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                  <div className="hidden md:grid grid-cols-[minmax(0,1fr)_110px_100px_130px_112px] gap-3 px-4 py-2 bg-slate-50 dark:bg-slate-950/70 border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <span>Name</span>
+                    <span>Type</span>
+                    <span>Size</span>
+                    <span>Modified</span>
+                    <span className="text-right">Actions</span>
                   </div>
-                ))}
-              </div>
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {r2Files.map((file) => {
+                      const icon = getR2FileIcon(file);
+                      const name = getR2FileName(file);
+                      const canDelete =
+                        String(file.id || file.key || file.path || '').startsWith('uploads/') ||
+                        String(file.id || file.key || file.path || '').startsWith('db-backups/');
+                      const canPreview = isR2Previewable(file);
+
+                      return (
+                        <div
+                          key={file.id || file.key || file.name}
+                          className="grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1fr)_110px_100px_130px_112px] gap-3 items-center px-3 md:px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setPreviewFile(file)}
+                            className="min-w-0 flex items-center gap-3 text-left"
+                            title={canPreview ? `Preview ${name}` : `File details: ${name}`}
+                          >
+                            <div
+                              className={`w-10 h-10 rounded-xl ${icon.bg} ${icon.tone} flex items-center justify-center shrink-0`}
+                            >
+                              <i className={`fas ${icon.icon} text-lg`}></i>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                                {name}
+                              </div>
+                              <div className="text-[10px] text-slate-400 font-mono truncate mt-0.5">
+                                {file.path || file.key || name}
+                              </div>
+                            </div>
+                          </button>
+
+                          <span className="hidden md:block text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                            {getR2LanguageLabel(file)}
+                          </span>
+                          <span className="hidden md:block text-xs text-slate-500 dark:text-slate-400 font-mono">
+                            {formatBytes(file.size)}
+                          </span>
+                          <span className="hidden md:block text-xs text-slate-500 dark:text-slate-400">
+                            {file.lastModified ? new Date(file.lastModified).toLocaleString() : '—'}
+                          </span>
+
+                          <div className="flex justify-end gap-1">
+                            <button
+                              onClick={() => setPreviewFile(file)}
+                              className="w-8 h-8 rounded-lg text-slate-400 hover:text-sky-500 hover:bg-sky-500/10 transition-colors flex items-center justify-center"
+                              title={canPreview ? 'Preview' : 'File details'}
+                            >
+                              <i
+                                className={`fas ${canPreview ? 'fa-eye' : 'fa-circle-info'} text-xs`}
+                              ></i>
+                            </button>
+                            {file.url && (
+                              <a
+                                href={file.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="w-8 h-8 rounded-lg text-slate-400 hover:text-indigo-500 hover:bg-indigo-500/10 transition-colors flex items-center justify-center"
+                                title="Open original"
+                              >
+                                <i className="fas fa-arrow-up-right-from-square text-xs"></i>
+                              </a>
+                            )}
+                            {canDelete && (
+                              <button
+                                onClick={() =>
+                                  setFileToDelete({
+                                    id: file.id || file.key || file.name,
+                                    type: 'R2'
+                                  })
+                                }
+                                className="w-8 h-8 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors flex items-center justify-center"
+                                title={t.system.common.delete}
+                              >
+                                <i className="fas fa-trash-alt text-xs"></i>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {r2Files.length === 0 && r2Folders.length === 0 && !loadingR2 && (
                 <div
@@ -802,7 +848,7 @@ export const SystemResources: React.FC = () => {
                 </div>
               )}
 
-              {!loadingR2 && r2HasMore && r2Files.length > 0 && (
+              {!loadingR2 && r2HasMore && (r2Files.length > 0 || r2Folders.length > 0) && (
                 <button
                   onClick={handleLoadMoreR2}
                   className="w-full py-3 mt-4 text-xs font-bold uppercase text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:text-blue-500 hover:border-blue-500 transition-colors"
@@ -902,6 +948,8 @@ export const SystemResources: React.FC = () => {
           </div>,
           document.body
         )}
+
+      <R2FilePreviewModal file={previewFile} onClose={() => setPreviewFile(null)} />
 
       {/* --- SHARED MODALS --- */}
 

@@ -450,7 +450,7 @@ export const featureService = {
   getR2Files: async (
     limit = 50,
     cursor?: string,
-    type: 'resource' | 'backup' = 'resource',
+    type: 'all' | 'resource' | 'backup' = 'all',
     folder: string = ''
   ): Promise<any> => {
     const params = new URLSearchParams({
@@ -461,6 +461,22 @@ export const featureService = {
     if (folder) params.append('folder', folder);
 
     return await fetchClient(`/upload/list?${params.toString()}`);
+  },
+
+  getR2ObjectBlob: async (key: string): Promise<Blob> => {
+    const token = localStorage.getItem('auth_token');
+    const headers: HeadersInit = {};
+    if (token) headers['x-auth-token'] = token;
+
+    const response = await fetch(`${API_BASE_URL}/upload/object?key=${encodeURIComponent(key)}`, {
+      headers
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to read R2 object: ${response.status}`);
+    }
+
+    return await response.blob();
   },
 
   deleteR2File: async (key: string): Promise<void> => {
