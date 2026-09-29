@@ -12,11 +12,6 @@ A bilingual digital garden, engineering portfolio, and personal operating system
 
 </div>
 
-<p align="center">
-  <a href="https://samyao.me">
-    <img src="./public/og-image.png" alt="Orion — samyao.me" width="100%" />
-  </a>
-</p>
 
 ## Why Orion
 
