@@ -1,104 +1,144 @@
+<div align="center">
+
+<img src="./public/logo.svg" alt="Orion" width="96" />
+
 # Orion
 
 **Navigate your value.**
 
-Orion is Sam Yao's bilingual digital garden and personal operating system. It brings a public journal, engineering portfolio and live app directory together with a private **Captain's Cabin** for writing, personal data, health, travel and AI-assisted workflows.
+A bilingual digital garden, engineering portfolio, and personal operating system — built around a public journal, live project directory, and a private **Captain's Cabin** for writing, personal data, health, travel, and AI-assisted workflows.
 
-[Live site](https://samyao.me) · [中文说明](README_CN.md)
+[Live site](https://samyao.me) · [中文说明](README_CN.md) · [API](https://api.samyao.me)
 
-![Orion](public/logo.svg)
+</div>
 
-## What is implemented
+<p align="center">
+  <a href="https://samyao.me">
+    <img src="./public/og-image.png" alt="Orion — samyao.me" width="100%" />
+  </a>
+</p>
 
-- **Public journal:** searchable posts, tags, comments, reactions, rich media and responsive article reading.
-- **Writing studio:** Tiptap rich text, headings, blockquotes, typography and colour controls, tables, tasks, code, syntax-safe LaTeX paste, emoji, online GIF search, video embeds, vector handwriting and direct clipboard image upload to R2.
-- **Consistent reading:** the editor, live preview and published article share the same content renderer, with violet-on-white and gold-on-cosmic theme palettes.
-- **Portfolio:** an Apps-first Web / Full Stack / Mobile directory with live demos and source links; professional experience lives at the secondary /profile/experience route, without CV download controls.
-- **Captain's Cabin:** JWT/RBAC-protected journal, second brain, to-do systems, fitness records, photo gallery, footprint map, personal utilities and account-aware private data.
-- **AI and realtime tools:** context-aware assistants, streaming responses and Socket.IO chat backed by the companion API.
-- **Installable web app:** responsive desktop, tablet and mobile layouts with PWA metadata and service-worker caching.
-- **Bilingual interface:** English and Chinese content, navigation and portfolio presentation.
+## Why Orion
 
-## Journal experience
+- **One place for public and private work** — portfolio, journal, personal systems, utilities, and private data live in one coherent product.
+- **Writing-first architecture** — editor, preview, and published articles share the same rendering model instead of drifting into separate implementations.
+- **Apps-first portfolio** — projects are treated as live products with demos, source links, categories, and bilingual presentation.
+- **Private Captain's Cabin** — authenticated workspaces for notes, tasks, health, travel, personal data, utilities, and account-aware workflows.
+- **AI where it is useful** — streaming assistants and project-import workflows augment existing product flows instead of becoming the product itself.
+- **Built for production** — Cloudflare edge controls, a protected Cloud Run origin, PWA support, structured SEO, and explicit deployment boundaries.
 
-The journal is designed as one writing system rather than separate editor and reader implementations.
+## Product surface
 
-- Paste display math such as `$$P(\text{mW}) = 10^{\frac{\text{dBm}}{10}}$$` and keep its fraction and exponent structure.
-- Paste an image directly into the editor; Orion reuses the authenticated upload path and stores the returned R2 URL.
-- Apply fonts, sizes and colours to selected text, insert emoji or GIFs, embed supported video links and draw editable SVG handwriting.
-- Preserve legacy Quill HTML, code containing dollar delimiters, tables, task lists and existing journal entries.
-- Keep private and public drafts isolated by account, and prevent publishing while media is still uploading.
+### Public Orion
 
-## Local development
+The public site is designed as a digital garden rather than a static résumé.
 
-Requirements: Node.js 22+ and pnpm 9+.
+- searchable bilingual journal
+- rich article reading with reactions and comments
+- Apps-first engineering portfolio
+- live demos and source links
+- public profile and professional experience
+- responsive desktop, tablet, and mobile layouts
+- installable PWA experience
 
-```bash
-git clone https://github.com/yaohuangguan/orion-frontend.git
-cd orion-frontend
-pnpm install
-pnpm dev:local
+### Captain's Cabin
+
+Private routes provide an authenticated personal workspace behind API-enforced permissions.
+
+Current areas include:
+
+- private journal and second-brain workflows
+- to-do and personal productivity systems
+- fitness and health records
+- photo gallery
+- travel and footprint map
+- account-aware utilities
+- AI-assisted workflows
+
+## Journal and writing system
+
+Orion treats writing as one end-to-end system instead of separate editor and reader products.
+
+The writing studio currently supports:
+
+- Tiptap rich-text editing
+- headings, blockquotes, typography, colours, tables, and tasks
+- syntax-safe LaTeX paste
+- code blocks that preserve dollar delimiters
+- emoji and online GIF search
+- supported video embeds
+- editable SVG handwriting
+- clipboard image upload to Cloudflare R2
+- legacy Quill HTML compatibility
+- draft isolation by account
+- publishing guards while media is still uploading
+
+Example display math:
+
+```text
+$$P(\text{mW}) = 10^{\frac{\text{dBm}}{10}}$$
 ```
 
-`pnpm dev:local` expects the API at `http://localhost:5000/api`. Use `pnpm dev` when `VITE_API_URL` is already configured or when you want the production API fallback.
+The editor, live preview, and published article intentionally share the same content renderer so formatting does not change between authoring and reading.
 
-Create `.env` for environment-specific values:
-
-```dotenv
-VITE_API_URL=http://localhost:5000/api
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_STORAGE_BUCKET=...
-VITE_FIREBASE_MESSAGING_SENDER_ID=...
-VITE_FIREBASE_APP_ID=...
-```
-
-Do not commit real credentials. Firebase mock values keep unauthenticated local pages usable, while private features require the API and a valid account.
-
-## Quality checks
-
-```bash
-pnpm typecheck
-pnpm lint
-pnpm test
-pnpm build
-```
-
-The browser suite covers LaTeX paste, code preservation, image upload and failure recovery, handwriting undo/redo and serialization, rich typography, emoji and GIF insertion, video round trips, draft isolation, legacy content, mobile overflow and both Orion themes.
-
-## Architecture
-
-Production separates the public frontend from the protected API origin. The browser never needs the
-Cloud Run hostname: all production API and realtime traffic uses `https://api.samyao.me`.
+## User flow
 
 ```mermaid
 flowchart LR
-  Browser[Browser / PWA] --> Vercel[Vercel\nsamyao.me]
-  Browser --> Firebase[Firebase sign-in]
-  Browser --> Edge[Cloudflare API Gateway\napi.samyao.me]
+    A["Visit samyao.me"] --> B{"Public or private?"}
+    B -->|Public| C["Journal · Apps · Profile"]
+    B -->|Private| D["Sign in"]
+    D --> E["Captain's Cabin"]
+    E --> F["Journal · Tasks · Health · Travel · Utilities"]
+    C --> G["Read · Explore · Open live projects"]
+    E --> H["Create · Manage · Use AI-assisted workflows"]
+```
 
-  Edge -->|rate limit · CORS · TLS · security headers| API[Google Cloud Run\nOrion API]
-  API --> Mongo[(MongoDB)]
-  API --> R2[(Cloudflare R2)]
-  API --> Realtime[Socket.IO]
-  API --> AIGateway[Cloudflare AI Gateway Worker]
-  AIGateway --> WorkersAI[Cloudflare Workers AI]
+## Architecture
+
+Production separates the public frontend from the protected API origin.
+
+The browser does not need the Cloud Run hostname. Production API and realtime traffic use `https://api.samyao.me`.
+
+```mermaid
+flowchart TD
+    Browser["Browser / PWA"]
+    Frontend["Orion Frontend<br/>samyao.me"]
+    Firebase["Firebase Authentication"]
+    Edge["Cloudflare API Gateway<br/>api.samyao.me"]
+    API["Google Cloud Run<br/>Orion API"]
+    Mongo["MongoDB"]
+    R2["Cloudflare R2"]
+    Realtime["Socket.IO"]
+    AIGateway["Cloudflare AI Gateway Worker"]
+    WorkersAI["Cloudflare Workers AI"]
+
+    Browser --> Frontend
+    Browser --> Firebase
+    Browser --> Edge
+    Edge -->|"rate limit · CORS · TLS · security headers"| API
+    API --> Mongo
+    API --> R2
+    API --> Realtime
+    API --> AIGateway
+    AIGateway --> WorkersAI
 ```
 
 ### Production API edge
 
 `api.samyao.me` is a Cloudflare Worker custom domain in front of Cloud Run.
 
-- Cloudflare terminates TLS, applies per-IP rate limits, handles CORS preflight and adds security headers before requests reach the application.
-- The Worker injects a private `x-orion-edge-secret`; Cloud Run rejects direct `/api/*` requests that do not carry the matching server-side secret. The public `run.app` hostname therefore cannot execute normal API business logic directly.
-- Cloud Run keeps `minScale=0` and `maxScale=2` as an additional cost/surge guardrail.
-- Mutable portfolio, journal and homepage API responses are deliberately returned with `Cache-Control: no-store`. New or edited projects/posts must be visible immediately after a successful write; edge caching is reserved for data with an explicit staleness contract.
-- Authenticated/BYOK secrets stay out of URLs and browser persistence. Optional Cloudflare AI credentials are session-only and are forwarded only for the current request.
+- Cloudflare terminates TLS, applies per-IP rate limits, handles CORS preflight, and adds security headers before requests reach the application.
+- The Worker injects a private `x-orion-edge-secret`; Cloud Run rejects direct `/api/*` requests that do not carry the matching server-side secret.
+- The public `run.app` hostname therefore cannot execute normal API business logic directly.
+- Cloud Run uses bounded scaling as an additional cost and surge guardrail.
+- Mutable portfolio, journal, and homepage API responses use `Cache-Control: no-store` so successful writes become visible immediately.
+- Edge caching is reserved for data with an explicit staleness contract.
+- Authenticated and BYOK secrets stay out of URLs and browser persistence. Optional AI credentials are session-only and forwarded only for the current request.
 
-### GitHub → Apps import
+## GitHub → Apps import
 
-Portfolio import uses a streaming POST endpoint instead of waiting for one long JSON response.
+Portfolio import turns a repository into a reviewable Orion project draft.
 
 ```text
 GitHub URL
@@ -112,33 +152,145 @@ GitHub URL
   → Save Project
 ```
 
-The backend emits Server-Sent Event formatted progress frames over the POST response, including
-heartbeats while Workers AI is running. The React client reads the response stream with `fetch()`
-and updates the progress UI in real time. Preview generation does not write MongoDB or upload R2
-assets; persistence still happens only when **Save Project** is pressed.
+The backend returns progress as Server-Sent Event formatted frames over a streaming POST response. The React client reads the stream with `fetch()` and updates progress in real time.
+
+Preview generation does not write MongoDB or upload R2 assets. Persistence happens only when **Save Project** is pressed.
+
+## Project layout
 
 ```text
-components/             shared UI, journal editor/reader, profile and private widgets
-pages/                  public routes and Captain's Cabin workspaces
-services/               API, authentication, content and media clients
-i18n/                   English and Chinese locale data
-constants/              navigation and built-in app catalogue
-tests/journal/           browser-level editor and renderer regression suite
-public/                  PWA, SEO and project assets
+orion-frontend/
+|
++-- components/          shared UI, journal editor/reader, profile and private widgets
++-- pages/               public routes and Captain's Cabin workspaces
++-- services/            API, authentication, content and media clients
++-- i18n/                English and Chinese locale data
++-- constants/           navigation and built-in app catalogue
++-- tests/journal/       browser-level editor and renderer regression suite
++-- public/              PWA, SEO and project assets
 ```
 
-React 19 · TypeScript · Vite · Tailwind CSS · Tiptap · KaTeX · Firebase · Socket.IO · Recharts · ECharts · Leaflet · Puppeteer.
+Core frontend stack:
+
+```text
+React 19
+TypeScript
+Vite
+Tailwind CSS
+Tiptap
+KaTeX
+Firebase
+Socket.IO
+Recharts
+ECharts
+Leaflet
+Puppeteer
+```
+
+## Local development
+
+Requirements:
+
+```text
+Node.js 22+
+pnpm 9+
+```
+
+Clone and start:
+
+```bash
+git clone https://github.com/yaohuangguan/orion-frontend.git
+cd orion-frontend
+pnpm install
+pnpm dev:local
+```
+
+`pnpm dev:local` expects the API at:
+
+```text
+http://localhost:5000/api
+```
+
+Use `pnpm dev` when `VITE_API_URL` is already configured or when you want the production API fallback.
+
+Create `.env` for environment-specific values:
+
+```dotenv
+VITE_API_URL=http://localhost:5000/api
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
+```
+
+Do not commit real credentials.
+
+Firebase mock values keep unauthenticated local pages usable, while private features require the API and a valid account.
+
+## Quality checks
+
+```bash
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm build
+```
+
+The browser regression suite covers:
+
+- LaTeX paste and rendering
+- code preservation
+- image upload and upload failure recovery
+- handwriting undo / redo and serialization
+- typography, emoji, and GIF insertion
+- video round trips
+- private draft isolation
+- legacy content compatibility
+- mobile overflow
+- both Orion themes
 
 ## Data and security
 
-- Public posts and portfolio data are readable without a session; private routes are enforced by backend permissions.
-- Authentication tokens and private entries are handled by the API. The frontend does not embed server secrets.
-- Pasted HTML is sanitised before rendering. Unsafe links and untrusted video embeds are rejected.
-- Media upload state blocks premature publishing and stores durable remote URLs instead of local blob URLs.
-- The application contains personal modules. Use your own environment, database and storage accounts for a separate deployment.
+- Public posts and portfolio data are readable without a session.
+- Private routes are enforced by backend permissions, not only frontend routing.
+- The frontend does not embed server-side secrets.
+- Pasted HTML is sanitised before rendering.
+- Unsafe links and untrusted video embeds are rejected.
+- Media upload state prevents premature publishing.
+- Durable remote media URLs are stored instead of local blob URLs.
+- Production API traffic is routed through the Cloudflare gateway before reaching Cloud Run.
+- The application contains personal modules; separate deployments should use their own environment, database, storage, and identity configuration.
+
+## Deployment model
+
+```mermaid
+flowchart LR
+    GitHub["GitHub"] --> FrontendDeploy["Frontend deployment"]
+    FrontendDeploy --> Site["samyao.me"]
+    Site --> Edge["api.samyao.me"]
+    Edge --> CloudRun["Cloud Run API"]
+    CloudRun --> Data["MongoDB · R2"]
+```
+
+Orion deliberately keeps frontend delivery and API execution separate. This makes the public site independently deployable while preserving a protected origin for authenticated and private operations.
 
 ## Companion service
 
-The frontend is backed by [new-bananaboom-api-2025](https://github.com/yaohuangguan/new-bananaboom-api-2025), which provides authentication, permissions, content, uploads, realtime events and personal-data APIs.
+The frontend is backed by [new-bananaboom-api-2025](https://github.com/yaohuangguan/new-bananaboom-api-2025).
 
-Contributions and issue reports are welcome. Run the quality checks before opening a pull request, and never include private journal content, exported account data or real credentials.
+The companion API provides authentication, permissions, content, uploads, realtime events, personal-data APIs, and AI-assisted backend workflows.
+
+## Contributing
+
+Contributions and issue reports are welcome. Before opening a pull request:
+
+```bash
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm build
+```
+
+Never include private journal content, exported account data, or real credentials in commits, issues, screenshots, or pull requests.
