@@ -34,7 +34,7 @@ Journal 不是编辑器和展示页的两套实现，而是一套贯通写作、
 需要 Node.js 22+ 与 pnpm 9+。
 
 ```bash
-git clone https://github.com/yaohuangguan/orion-frontend.git
+git clone https://github.com/orion-ai-club/orion-frontend.git
 cd orion-frontend
 pnpm install
 pnpm dev:local

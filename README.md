@@ -194,7 +194,7 @@ pnpm 9+
 Clone and start:
 
 ```bash
-git clone https://github.com/yaohuangguan/orion-frontend.git
+git clone https://github.com/orion-ai-club/orion-frontend.git
 cd orion-frontend
 pnpm install
 pnpm dev:local
