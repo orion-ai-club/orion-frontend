@@ -6,14 +6,19 @@ const DEFAULTS = {
 };
 
 const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS || 12000);
+// The edge check is end-to-end (Cloudflare -> Cloud Run -> app -> DB). The
+// Cloud Run service intentionally scales to zero, so its first request can pay
+// a cold-start penalty. Keep the other checks strict, but allow that expected
+// startup window here.
+const EDGE_API_TIMEOUT_MS = Number(process.env.SMOKE_EDGE_TIMEOUT_MS || 20000);
 
 function target(name, fallback) {
   return process.env[name] || fallback;
 }
 
-async function fetchWithTimeout(url, init = {}) {
+async function fetchWithTimeout(url, init = {}, timeoutMs = TIMEOUT_MS) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   const started = Date.now();
 
   try {
@@ -27,6 +32,11 @@ async function fetchWithTimeout(url, init = {}) {
       }
     });
     return { response, durationMs: Date.now() - started };
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error(`request timed out after ${timeoutMs}ms: ${url}`);
+    }
+    throw error;
   } finally {
     clearTimeout(timer);
   }
@@ -67,9 +77,11 @@ async function checkFrontend() {
 
 async function checkEdgeApi() {
   const url = target('SMOKE_EDGE_API_URL', DEFAULTS.edgeApi);
-  const { response, durationMs } = await fetchWithTimeout(url, {
-    headers: { accept: 'application/json' }
-  });
+  const { response, durationMs } = await fetchWithTimeout(
+    url,
+    { headers: { accept: 'application/json' } },
+    EDGE_API_TIMEOUT_MS
+  );
   const text = await response.text();
 
   assert(
@@ -91,7 +103,8 @@ async function checkEdgeApi() {
     ok: true,
     status: response.status,
     durationMs,
-    items: json.data.length
+    items: json.data.length,
+    timeoutMs: EDGE_API_TIMEOUT_MS
   };
 }
 
