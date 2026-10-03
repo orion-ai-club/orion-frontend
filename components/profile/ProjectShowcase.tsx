@@ -15,6 +15,7 @@ import { toast } from '../Toast';
 import { DeleteModal } from '../DeleteModal';
 import { R2ImageSelectorModal } from '../R2ImageSelectorModal';
 import { renderSafeMarkdown, safeExternalUrl } from '../../utils/security';
+import { dataUrlToBlob } from '../../utils/dataUrl';
 
 interface ProjectShowcaseProps {
   currentUser?: User | null;
@@ -453,8 +454,7 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
     try {
       if (!processedProject.iconImage && generatedIconDataUrl) {
         setIsUploadingIcon(true);
-        const iconResponse = await fetch(generatedIconDataUrl);
-        const iconBlob = await iconResponse.blob();
+        const iconBlob = dataUrlToBlob(generatedIconDataUrl);
         const iconExt =
           iconBlob.type === 'image/svg+xml'
             ? 'svg'
@@ -491,8 +491,7 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
 
         let generatedCover: File;
         if (generatedAiCoverDataUrl) {
-          const response = await fetch(generatedAiCoverDataUrl);
-          const blob = await response.blob();
+          const blob = dataUrlToBlob(generatedAiCoverDataUrl);
           generatedCover = new File([blob], `${safeName}-cover.jpg`, {
             type: blob.type || 'image/jpeg'
           });
