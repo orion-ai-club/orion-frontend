@@ -15,7 +15,7 @@
     "test:journal": "node tests/journal/run.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "node tests/journal/run.mjs",
+    "test": "node tests/journal/run.mjs && node --test tests/dataUrl.test.mjs",
     "smoke:production": "node scripts/production-smoke.mjs"
   },
   "lint-staged": {
