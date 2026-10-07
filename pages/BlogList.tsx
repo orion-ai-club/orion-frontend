@@ -263,6 +263,14 @@ export const BlogList: React.FC<BlogListProps> = ({
           name="description"
           content="Sam's recorded thoughts on engineering, star charts, and digital evolution. Sam关于工程技术、星图研究与数字演进的深度思考记录。"
         />
+        <link rel="canonical" href="https://samyao.me/blogs" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="Orion Journals | Engineering & Digital Evolution" />
+        <meta
+          property="og:description"
+          content="Sam's technical journal on engineering, systems, AI tooling, architecture, and digital evolution."
+        />
+        <meta property="og:url" content="https://samyao.me/blogs" />
       </Helmet>
 
       <header className="relative mb-6 overflow-hidden rounded-[2.6rem] border border-primary-100/70 bg-white/72 px-6 py-10 shadow-[0_30px_100px_-65px_rgba(79,70,229,.65)] backdrop-blur-2xl dark:border-primary-400/15 dark:bg-slate-950/68 dark:shadow-[0_35px_110px_-60px_rgba(0,0,0,.98)] sm:px-10 sm:py-12 lg:px-14">

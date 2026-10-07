@@ -151,10 +151,17 @@ export const ArticleView: React.FC<ArticleViewProps> = ({
   };
 
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
-  const currentArticleUrl =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}${window.location.pathname}`
+  const canonicalArticlePath = blog
+    ? `/blogs/${(
+        blog.name
+          ?.replace(/[^\p{L}\p{N}]+/gu, '-')
+          .replace(/^-+|-+$/g, '')
+          .toLowerCase() || 'post'
+      )}-${blog._id}`
+    : slug
+      ? `/blogs/${slug}`
       : '';
+  const currentArticleUrl = currentOrigin ? `${currentOrigin}${canonicalArticlePath}` : '';
 
   // --- 🌟 SEO: 准备 JSON-LD 结构化数据 ---
   const structuredData = blog

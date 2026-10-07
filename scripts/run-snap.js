@@ -18,6 +18,7 @@ const STATIC_ROUTES = ['/', '/blogs', '/profile', '/footprints', '/404'];
 // 2. API 地址
 const API_BASE_URL =
   'https://api.samyao.me/api';
+const POSTS_URL = API_BASE_URL + '/posts?page=1&limit=1000';
 
 const isVercel = process.env.VERCEL === '1';
 
@@ -41,9 +42,9 @@ function startServer() {
 
 // --- 获取动态路由 (纯 ID 模式) ---
 async function fetchPostRoutes() {
-  console.log(`🌍 Fetching posts from API: ${API_BASE_URL}/posts...`);
+  console.log('🌍 Fetching posts from API: ' + POSTS_URL + '...');
   try {
-    const response = await fetch(`${API_BASE_URL}/posts`);
+    const response = await fetch(POSTS_URL);
     if (!response.ok) throw new Error(`API responded with ${response.status}`);
 
     const json = await response.json();
@@ -57,18 +58,24 @@ async function fetchPostRoutes() {
       return [];
     }
 
-    // 🔥🔥🔥 核心修改：只使用 ID，不再拼接中文标题 🔥🔥🔥
-    // 这样能确保 URL 简短且无特殊字符，避免 Vercel 500 错误
-    const routes = posts.map((post) => {
-      const id = post._id || post.id;
-      return `/blogs/${id}`;
-    });
+    // Keep prerender paths identical to the canonical/sitemap URL shape.
+    const routes = posts
+      .filter((post) => !post.isPrivate)
+      .map((post) => {
+        const id = post._id || post.id;
+        const cleanTitle =
+          post.name
+            ?.replace(/[^\p{L}\p{N}]+/gu, '-')
+            .replace(/^-+|-+$/g, '')
+            .toLowerCase() || 'post';
+        return `/blogs/${cleanTitle}-${id}`;
+      });
 
     console.log(`📚 Found ${routes.length} posts to prerender.`);
     return routes;
   } catch (error) {
     console.error('⚠️ Failed to fetch posts:', error.message);
-    return [];
+    throw error;
   }
 }
 
@@ -78,14 +85,60 @@ async function snapPage(browser, route, index, total) {
   try {
     page = await browser.newPage();
 
-    // 拦截不必要的资源以加速 (图片、字体)
+    // The preview runs on localhost during build while the API only allows the
+    // production origin. Proxy API traffic through Node so prerendering sees
+    // the same public data without weakening production CORS.
     await page.setRequestInterception(true);
-    page.on('request', (req) => {
-      const resourceType = req.resourceType();
-      if (['image', 'font'].includes(resourceType)) {
-        req.continue();
-      } else {
-        req.continue();
+    page.on('request', async (req) => {
+      const url = req.url();
+      if (!url.startsWith(API_BASE_URL)) {
+        await req.continue();
+        return;
+      }
+
+      const previewOrigin = 'http://localhost:4173';
+      const corsHeaders = {
+        'access-control-allow-origin': previewOrigin,
+        'access-control-allow-credentials': 'true',
+        'access-control-allow-methods': 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS',
+        'access-control-allow-headers': req.headers()['access-control-request-headers'] || 'content-type,authorization'
+      };
+
+      try {
+        if (req.method() === 'OPTIONS') {
+          await req.respond({ status: 204, headers: corsHeaders, body: '' });
+          return;
+        }
+
+        const headers = { ...req.headers() };
+        delete headers.host;
+        delete headers.origin;
+        delete headers.referer;
+        delete headers['content-length'];
+
+        const init = { method: req.method(), headers };
+        if (!['GET', 'HEAD'].includes(req.method()) && req.postData()) {
+          init.body = req.postData();
+        }
+
+        const upstream = await fetch(url, init);
+        const body = Buffer.from(await upstream.arrayBuffer());
+        const responseHeaders = {};
+        upstream.headers.forEach((value, key) => {
+          if (!['content-encoding', 'transfer-encoding', 'content-length'].includes(key.toLowerCase())) {
+            responseHeaders[key] = value;
+          }
+        });
+        Object.assign(responseHeaders, corsHeaders);
+
+        await req.respond({
+          status: upstream.status,
+          headers: responseHeaders,
+          body
+        });
+      } catch (error) {
+        console.warn(`⚠️ API proxy failed for ${url}: ${error.message}`);
+        await req.abort();
       }
     });
 
@@ -95,15 +148,40 @@ async function snapPage(browser, route, index, total) {
     const url = `http://localhost:4173${route}`;
 
     // 放宽超时时间
-    await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-    // 针对博客详情页和 Profile，等待主内容加载
-    if (route.includes('/blogs/') || route === '/profile') {
-      try {
-        await page.waitForSelector('main', { timeout: 5000 });
-      } catch (e) {
-        /* empty */
-      }
+    // The app keeps realtime connections open, so networkidle0 never settles.
+    // Wait for actual rendered UI instead of network silence.
+    await page.waitForSelector('#root > *', { timeout: 15000 });
+
+    // Wait for route-specific content/metadata before serializing the snapshot.
+    // The app keeps sockets open, so SEO readiness is based on meaningful DOM/meta.
+    if (route === '/') {
+      await page.waitForFunction(
+        () =>
+          document.title.startsWith('Sam Yao') &&
+          Boolean(document.querySelector('main h1')) &&
+          Boolean(document.querySelector('link[rel="canonical"]')),
+        { timeout: 15000 }
+      );
+    } else if (route.startsWith('/blogs/')) {
+      await page.waitForFunction(
+        () =>
+          document.title.includes('| Orion Journals') &&
+          Boolean(document.querySelector('article h1')) &&
+          Boolean(document.querySelector('link[rel="canonical"]')),
+        { timeout: 15000 }
+      );
+    } else if (route === '/blogs') {
+      await page.waitForFunction(
+        () =>
+          document.title.includes('Orion Journals') &&
+          Boolean(document.querySelector('#latest-posts header')) &&
+          Boolean(document.querySelector('link[rel="canonical"]')),
+        { timeout: 15000 }
+      );
+    } else if (route === '/profile') {
+      await page.waitForSelector('main h1, main h2', { timeout: 15000 });
     }
 
     // Stamp the snapshot with the route it was rendered for.
@@ -111,6 +189,23 @@ async function snapPage(browser, route, index, total) {
     await page.evaluate((renderedRoute) => {
       const root = document.getElementById('root');
       if (root) root.setAttribute('data-prerender-path', renderedRoute);
+
+      const absoluteUrl = new URL(renderedRoute === '/' ? '/' : renderedRoute, 'https://samyao.me').href;
+      let canonical = document.querySelector('link[rel="canonical"]');
+      if (!canonical) {
+        canonical = document.createElement('link');
+        canonical.setAttribute('rel', 'canonical');
+        document.head.appendChild(canonical);
+      }
+      canonical.setAttribute('href', absoluteUrl);
+
+      let ogUrl = document.querySelector('meta[property="og:url"]');
+      if (!ogUrl) {
+        ogUrl = document.createElement('meta');
+        ogUrl.setAttribute('property', 'og:url');
+        document.head.appendChild(ogUrl);
+      }
+      ogUrl.setAttribute('content', absoluteUrl);
     }, route);
 
     const html = await page.content();
@@ -119,6 +214,10 @@ async function snapPage(browser, route, index, total) {
     let filePath;
     if (route === '/404') {
       filePath = path.join(DIST_DIR, '404.html');
+    } else if (route === '/') {
+      // Keep dist/index.html as the immutable SPA source while the preview
+      // server renders the other routes; promote this snapshot at the end.
+      filePath = path.join(DIST_DIR, '__root_snapshot.html');
     } else {
       // 路由: /blogs/694b... -> 目录: dist/blogs/694b.../index.html
       // 移除开头的 /
@@ -131,8 +230,10 @@ async function snapPage(browser, route, index, total) {
 
     fs.writeFileSync(filePath, html);
     console.log(`✅ [${index + 1}/${total}] Saved: ${route}`);
+    return true;
   } catch (e) {
     console.error(`❌ [${index + 1}/${total}] Error: ${route} - ${e.message}`);
+    return false;
   } finally {
     if (page) await page.close(); // 必须关闭 Tab 释放内存
   }
@@ -164,6 +265,9 @@ async function snapPage(browser, route, index, total) {
     } else {
       console.log('💻 Local run. Using Puppeteer...');
       executablePath = puppeteer.executablePath();
+      if (!fs.existsSync(executablePath) && fs.existsSync('/usr/bin/google-chrome')) {
+        executablePath = '/usr/bin/google-chrome';
+      }
       launchArgs = ['--no-sandbox', '--disable-setuid-sandbox'];
     }
 
@@ -191,10 +295,21 @@ async function snapPage(browser, route, index, total) {
       }
     }
 
-    await Promise.all(results);
+    const settled = await Promise.all(results);
+    const failedCount = settled.filter((ok) => !ok).length;
+    if (failedCount > 0) {
+      throw new Error(`Prerender failed for ${failedCount} of ${total} routes`);
+    }
+
+    const rootSnapshot = path.join(DIST_DIR, '__root_snapshot.html');
+    if (!fs.existsSync(rootSnapshot)) {
+      throw new Error('Root prerender snapshot was not created');
+    }
+    fs.renameSync(rootSnapshot, path.join(DIST_DIR, 'index.html'));
     console.log('🎉 All pages prerendered successfully!');
   } catch (error) {
     console.error('⚠️ Prerender script global error:', error);
+    throw error;
   } finally {
     if (browser) {
       try {
@@ -207,6 +322,9 @@ async function snapPage(browser, route, index, total) {
       console.log('🛑 Killing preview server...');
       serverProcess.kill();
     }
-    process.exit(0);
+    if (process.exitCode == null) process.exitCode = 0;
   }
-})();
+})().catch((error) => {
+  console.error('❌ Prerender failed:', error);
+  process.exitCode = 1;
+});
