@@ -16,6 +16,7 @@ import { DeleteModal } from '../DeleteModal';
 import { R2ImageSelectorModal } from '../R2ImageSelectorModal';
 import { renderSafeMarkdown, safeExternalUrl } from '../../utils/security';
 import { dataUrlToBlob } from '../../utils/dataUrl';
+import { ProjectBrandIcon } from './ProjectBrandIcon';
 
 interface ProjectShowcaseProps {
   currentUser?: User | null;
@@ -1593,30 +1594,7 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
                 <div className="flex flex-1 flex-col p-6">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex min-w-0 items-center gap-3.5">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary-100 text-lg font-black text-primary-700 ring-1 ring-primary-200/70 dark:bg-primary-400/10 dark:text-primary-400 dark:ring-primary-400/15">
-                        {project.iconImage ? (
-                          <img
-                            src={project.iconImage}
-                            alt={`${title} icon`}
-                            className="h-full w-full object-contain bg-white p-1.5 dark:bg-slate-900"
-                            onError={(event) => {
-                              event.currentTarget.style.display = 'none';
-                              const fallback = event.currentTarget
-                                .nextElementSibling as HTMLElement | null;
-                              if (fallback) fallback.style.display = 'flex';
-                            }}
-                          />
-                        ) : null}
-                        <span
-                          className={
-                            project.iconImage
-                              ? 'hidden h-full w-full items-center justify-center'
-                              : 'flex h-full w-full items-center justify-center'
-                          }
-                        >
-                          {title.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
+                      <ProjectBrandIcon project={project} title={title} />
                       <div className="min-w-0">
                         <h2 className="truncate font-display text-lg font-black tracking-tight text-slate-950 transition-colors group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-400">
                           {title}
@@ -1633,8 +1611,8 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
                       onClick={() => setActiveDetailProject(project)}
                       className="shrink-0 rounded-full bg-primary-500 px-4 py-2 text-[10px] font-black uppercase tracking-wider text-white shadow-md shadow-primary-500/20 transition hover:-translate-y-0.5 hover:bg-primary-600 dark:text-slate-950"
                     >
-                      <i className="fas fa-arrow-up-right-from-square mr-1.5" />
-                      {language === 'zh' ? '打开详情' : 'Open details'}
+                      <i className="fas fa-circle-info mr-1.5" />
+                      {language === 'zh' ? '查看详情' : 'View Details'}
                     </button>
                   </div>
 
@@ -1727,29 +1705,11 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
                 {/* Header Block */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-slate-100 dark:border-slate-800/80">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl overflow-hidden bg-primary-100 flex items-center justify-center text-primary-700 dark:bg-primary-400/10 dark:text-primary-400 text-3xl font-black shadow-lg shadow-primary-500/10 ring-1 ring-primary-200/70 dark:ring-primary-400/15 flex-shrink-0 select-none">
-                      {activeDetailProject.iconImage ? (
-                        <img
-                          src={activeDetailProject.iconImage}
-                          alt={`${getLocalized(activeDetailProject, 'title')} icon`}
-                          className="h-full w-full object-contain bg-white p-2 dark:bg-slate-900"
-                          onError={(event) => {
-                            event.currentTarget.style.display = 'none';
-                            const fallback = event.currentTarget.nextElementSibling as HTMLElement | null;
-                            if (fallback) fallback.style.display = 'flex';
-                          }}
-                        />
-                      ) : null}
-                      <span
-                        className={
-                          activeDetailProject.iconImage
-                            ? 'hidden h-full w-full items-center justify-center'
-                            : 'flex h-full w-full items-center justify-center'
-                        }
-                      >
-                        {(getLocalized(activeDetailProject, 'title') || 'P').charAt(0).toUpperCase()}
-                      </span>
-                    </div>
+                    <ProjectBrandIcon
+                      project={activeDetailProject}
+                      title={getLocalized(activeDetailProject, 'title') || 'Project'}
+                      size="detail"
+                    />
                     <div>
                       <h2 className="text-2xl md:text-3xl font-display font-black text-slate-900 dark:text-white leading-tight">
                         {getLocalized(activeDetailProject, 'title')}
