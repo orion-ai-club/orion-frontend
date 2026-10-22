@@ -13,6 +13,15 @@ import { Theme, PageView, User, BlogPost, ChatUser, PERM_KEYS, can } from './typ
 import { useTranslation } from './i18n/LanguageContext';
 import { Helmet } from 'react-helmet-async';
 
+const blogPath = (blog: BlogPost) => {
+  const cleanTitle =
+    blog.name
+      ?.replace(/[^\p{L}\p{N}]+/gu, '-')
+      .replace(/^-+|-+$/g, '')
+      .toLowerCase() || 'post';
+  return `/blogs/${cleanTitle}-${blog._id}`;
+};
+
 // Shared shell imports stay eager; route/modal content is loaded on demand below.
 import { Footer } from './components/Footer';
 import { PageLoader } from './components/PageLoader';
@@ -460,7 +469,15 @@ const App: React.FC = () => {
             element={
               <>
                 <Helmet>
-                  <title>Orion | Home</title>
+                  <title>Sam Yao | Full-stack Engineer, Builder & Technical Journal</title>
+                  <meta
+                    name="description"
+                    content="Sam Yao’s engineering portfolio and technical journal covering full-stack systems, AI tooling, distributed architecture, and products built in public."
+                  />
+                  <link rel="canonical" href="https://samyao.me/" />
+                  <meta property="og:title" content="Sam Yao | Full-stack Engineer, Builder & Technical Journal" />
+                  <meta property="og:description" content="Engineering portfolio, technical writing, and products built in public by Sam Yao." />
+                  <meta property="og:url" content="https://samyao.me/" />
                 </Helmet>
                 <Hero
                   onCtaClick={() => navigate('/blogs')}
@@ -490,7 +507,7 @@ const App: React.FC = () => {
                 onSelectBlog={(blog) => {
                   // 🔥 修改 1: 弃用中文标题拼接，直接使用纯 ID 跳转
                   // 这样生成的链接是 /blogs/694d...，与预渲染脚本完美匹配
-                  navigate(`/blogs/${blog._id}`);
+                  navigate(blogPath(blog));
                 }}
                 isLoading={isLoadingBlogs}
                 currentUser={user}
@@ -510,7 +527,7 @@ const App: React.FC = () => {
                 onBack={() => navigate('/blogs')}
                 onNavigateToBlog={(blog) => {
                   // 🔥 修改 3: 详情页内部的关联跳转也同步改为纯 ID
-                  navigate(`/blogs/${blog._id}`);
+                  navigate(blogPath(blog));
                 }}
                 currentUser={user}
                 onLoginRequest={() => setIsLoginModalOpen(true)}

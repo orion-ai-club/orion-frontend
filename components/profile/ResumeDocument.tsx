@@ -1240,24 +1240,72 @@ export const ResumeDocument = React.forwardRef<HTMLDivElement, ResumeDocumentPro
                 )}
               </div>
             ) : (
-              <ResumePaper
-                ref={ref}
-                resume={resume}
-                isPrint={isPrint}
-                isVip={canUpdate}
-                language={language}
-                currentPdfMode={currentPdfMode as any}
-                currentPaperSize={currentPaperSize as any}
-                currentPageLimit={currentPageLimit}
-                fontSizeClass={fontSizeClass}
-                lineHeightClass={lineHeightClass}
-                themeColorClass={themeColorClass}
-                marginClass={marginClass}
-                sectionGapClass={sectionGapClass}
-                pageHeight={pageHeight}
-                setActiveInlineEdit={setActiveInlineEdit}
-                setInlineEditAnchor={setInlineEditAnchor}
-              />
+              <>
+                {!isPrint && (
+                  <div className="mb-4 rounded-2xl border border-primary-100/80 bg-white/85 p-4 shadow-sm backdrop-blur-xl dark:border-primary-400/15 dark:bg-slate-950/70 print:hidden">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div className="mb-1 flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-primary-600 dark:text-primary-400">
+                          <span className="rounded-md bg-primary-50 px-2 py-1 font-mono dark:bg-primary-400/10">&lt;/&gt; DOM</span>
+                          <span>{language === 'zh' ? '互动简历' : 'Interactive resume'}</span>
+                        </div>
+                        <p className="max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">
+                          {language === 'zh'
+                            ? '看起来像 PDF，但这是真实 HTML：章节可以直接跳转，链接可以点击，打印时会自动还原成干净的简历版式。'
+                            : 'It looks like a PDF by design, but it is real HTML: jump between sections, follow live links, and print a clean resume without the web controls.'}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {getNormalizedSectionOrder(resume.sectionOrder).map((sectionId) => {
+                          const labels: Record<string, { en: string; zh: string }> = {
+                            profile: { en: 'Profile', zh: '简介' },
+                            work: { en: 'Experience', zh: '经历' },
+                            projects: { en: 'Projects', zh: '项目' },
+                            education: { en: 'Education', zh: '教育' },
+                            volunteer: { en: 'Community', zh: '社区' },
+                            interest: { en: 'Interests', zh: '兴趣' },
+                            skills: { en: 'Skills', zh: '技能' }
+                          };
+                          const label = labels[sectionId];
+                          if (!label) return null;
+                          return (
+                            <button
+                              key={sectionId}
+                              type="button"
+                              onClick={() =>
+                                document
+                                  .getElementById(`resume-section-${sectionId}`)
+                                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                              }
+                              className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:-translate-y-0.5 hover:border-primary-300 hover:text-primary-600 hover:shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-primary-500/40 dark:hover:text-primary-300"
+                            >
+                              {language === 'zh' ? label.zh : label.en}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <ResumePaper
+                  ref={ref}
+                  resume={resume}
+                  isPrint={isPrint}
+                  isVip={canUpdate}
+                  language={language}
+                  currentPdfMode={currentPdfMode as any}
+                  currentPaperSize={currentPaperSize as any}
+                  currentPageLimit={currentPageLimit}
+                  fontSizeClass={fontSizeClass}
+                  lineHeightClass={lineHeightClass}
+                  themeColorClass={themeColorClass}
+                  marginClass={marginClass}
+                  sectionGapClass={sectionGapClass}
+                  pageHeight={pageHeight}
+                  setActiveInlineEdit={setActiveInlineEdit}
+                  setInlineEditAnchor={setInlineEditAnchor}
+                />
+              </>
             )}
           </div>
         </div>

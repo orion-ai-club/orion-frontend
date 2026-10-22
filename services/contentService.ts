@@ -371,7 +371,8 @@ export const contentService = {
     repoUrl: string,
     onProgress: (progress: PortfolioImportProgress) => void,
     cloudflareAiToken?: string,
-    cloudflareAccountId?: string
+    cloudflareAccountId?: string,
+    options?: { generateCover?: boolean }
   ): Promise<PortfolioImportPreview> => {
     const headers: Record<string, string> = {};
     if (cloudflareAiToken) headers['x-cloudflare-ai-token'] = cloudflareAiToken;
@@ -382,7 +383,7 @@ export const contentService = {
       {
         method: 'POST',
         headers: Object.keys(headers).length ? headers : undefined,
-        body: JSON.stringify({ repoUrl })
+        body: JSON.stringify({ repoUrl, generateCover: options?.generateCover !== false })
       },
       onProgress
     );
@@ -412,7 +413,8 @@ export const contentService = {
   previewGithubPortfolioImport: async (
     repoUrl: string,
     cloudflareAiToken?: string,
-    cloudflareAccountId?: string
+    cloudflareAccountId?: string,
+    options?: { generateCover?: boolean }
   ): Promise<PortfolioImportPreview> => {
     const headers: Record<string, string> = {};
     if (cloudflareAiToken) headers['x-cloudflare-ai-token'] = cloudflareAiToken;
@@ -421,7 +423,7 @@ export const contentService = {
     return await fetchClient<PortfolioImportPreview>('/projects/import-github/preview', {
       method: 'POST',
       headers: Object.keys(headers).length ? headers : undefined,
-      body: JSON.stringify({ repoUrl })
+      body: JSON.stringify({ repoUrl, generateCover: options?.generateCover !== false })
     });
   },
 

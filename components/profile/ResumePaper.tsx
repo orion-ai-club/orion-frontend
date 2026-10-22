@@ -307,7 +307,7 @@ export const ResumePaper = React.forwardRef<HTMLDivElement, ResumePaperProps>(
             const summaryText = getLocalized(resume.basics, 'summary', language);
             if (!summaryText) return null;
             return (
-              <section key="profile" className="mb-6 print:mb-4">
+              <section id="resume-section-profile" key="profile" className="mb-6 scroll-mt-28 print:mb-4">
                 <EditableText
                   path={`sectionTitles.profile_${language}`}
                   label={language === 'zh' ? '版块标题 / Title' : 'Section Title'}
@@ -345,7 +345,7 @@ export const ResumePaper = React.forwardRef<HTMLDivElement, ResumePaperProps>(
             const workExperience = getSortedWorkExperience(resume.work);
             if (workExperience.length === 0) return null;
             return (
-              <section key="work" className="mb-6 print:mb-4">
+              <section id="resume-section-work" key="work" className="mb-6 scroll-mt-28 print:mb-4">
                 <EditableText
                   path={`sectionTitles.work_${language}`}
                   label={language === 'zh' ? '版块标题 / Title' : 'Section Title'}
@@ -497,7 +497,7 @@ export const ResumePaper = React.forwardRef<HTMLDivElement, ResumePaperProps>(
             const featuredProjects = getSortedFeaturedProjects(resume.work);
             if (featuredProjects.length === 0) return null;
             return (
-              <section key="projects" className="mb-6 print:mb-4">
+              <section id="resume-section-projects" key="projects" className="mb-6 scroll-mt-28 print:mb-4">
                 <EditableText
                   path={`sectionTitles.projects_${language}`}
                   label={language === 'zh' ? '版块标题 / Title' : 'Section Title'}
@@ -650,7 +650,7 @@ export const ResumePaper = React.forwardRef<HTMLDivElement, ResumePaperProps>(
           if (sectionId === 'education') {
             if (!resume.education || resume.education.length === 0) return null;
             return (
-              <section key="education" className="mb-6 print:mb-4">
+              <section id="resume-section-education" key="education" className="mb-6 scroll-mt-28 print:mb-4">
                 <EditableText
                   path={`sectionTitles.education_${language}`}
                   label={language === 'zh' ? '版块标题 / Title' : 'Section Title'}
@@ -804,7 +804,7 @@ export const ResumePaper = React.forwardRef<HTMLDivElement, ResumePaperProps>(
             const volunteerList = resume.volunteer || [];
             if (volunteerList.length === 0) return null;
             return (
-              <section key="volunteer" className="mb-6 print:mb-4">
+              <section id="resume-section-volunteer" key="volunteer" className="mb-6 scroll-mt-28 print:mb-4">
                 <EditableText
                   path={`sectionTitles.volunteer_${language}`}
                   label={language === 'zh' ? '版块标题 / Title' : 'Section Title'}
@@ -941,7 +941,7 @@ export const ResumePaper = React.forwardRef<HTMLDivElement, ResumePaperProps>(
             const interestList = resume.interest || [];
             if (interestList.length === 0) return null;
             return (
-              <section key="interest" className="mb-6 print:mb-4">
+              <section id="resume-section-interest" key="interest" className="mb-6 scroll-mt-28 print:mb-4">
                 <EditableText
                   path={`sectionTitles.interest_${language}`}
                   label={language === 'zh' ? '版块标题 / Title' : 'Section Title'}
@@ -1043,7 +1043,7 @@ export const ResumePaper = React.forwardRef<HTMLDivElement, ResumePaperProps>(
             const skillsList = getCombinedSkills(resume.skills);
             if (skillsList.length === 0) return null;
             return (
-              <section key="skills" className="mb-6 print:mb-4">
+              <section id="resume-section-skills" key="skills" className="mb-6 scroll-mt-28 print:mb-4">
                 <EditableText
                   path={`sectionTitles.skills_${language}`}
                   label={language === 'zh' ? '版块标题 / Title' : 'Section Title'}

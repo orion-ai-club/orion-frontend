@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /captain-cabin
+Disallow: /system-settings
+Disallow: /audit
+Disallow: /chatroom
+
+Sitemap: https://samyao.me/sitemap.xml

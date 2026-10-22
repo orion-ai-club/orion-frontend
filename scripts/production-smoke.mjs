@@ -1,8 +1,10 @@
+import { appendFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+
 const DEFAULTS = {
   frontend: 'https://www.samyao.me/',
   edgeApi: 'https://api.samyao.me/api/posts?page=1&limit=1',
-  directOrigin:
-    'https://bananaboom-api-242273127238.asia-east1.run.app/api/posts?page=1&limit=1'
+  directOrigin: 'https://bananaboom-api-242273127238.asia-east1.run.app/api/posts?page=1&limit=1'
 };
 
 const TIMEOUT_MS = Number(process.env.SMOKE_TIMEOUT_MS || 12000);
@@ -56,7 +58,10 @@ async function checkFrontend() {
     response.headers.get('content-type')?.includes('text/html'),
     `frontend content-type is not HTML: ${response.headers.get('content-type') || 'missing'}`
   );
-  assert(body.includes('<div id="root">'), 'frontend HTML is missing #root mount point');
+  assert(
+    /<div\b(?=[^>]*\sid\s*=\s*(["'])root\1)[^>]*>/i.test(body),
+    'frontend HTML is missing #root mount point'
+  );
 
   const csp = response.headers.get('content-security-policy');
   assert(csp, 'frontend Content-Security-Policy header is missing');
@@ -158,9 +163,7 @@ async function checkNoOriginLeak() {
     const assetUrl = new URL(src, origin).toString();
     const { response: assetResponse } = await fetchWithTimeout(assetUrl);
     if (!assetResponse.ok) {
-      throw new Error(
-        `failed to inspect frontend asset ${assetUrl}: HTTP ${assetResponse.status}`
-      );
+      throw new Error(`failed to inspect frontend asset ${assetUrl}: HTTP ${assetResponse.status}`);
     }
     const source = await assetResponse.text();
     if (/https?:\/\/[^"'\s]+\.run\.app/i.test(source)) findings.push(assetUrl);
@@ -203,5 +206,18 @@ for (const [name, run] of checks) {
 
 console.log('\nProduction smoke summary');
 console.log(JSON.stringify({ ok: !failed, checkedAt: new Date().toISOString(), results }, null, 2));
+
+if (failed && process.env.GITHUB_OUTPUT) {
+  const failures = results.filter((result) => !result.ok);
+  const signatureInput = failures
+    .map(({ name, error }) => `${name}: ${error}`)
+    .sort()
+    .join('\n');
+  const signature = createHash('sha256').update(signatureInput).digest('hex').slice(0, 16);
+  appendFileSync(
+    process.env.GITHUB_OUTPUT,
+    `failure_signature=${signature}\nfailed_checks=${failures.map(({ name }) => name).join(', ')}\n`
+  );
+}
 
 if (failed) process.exit(1);

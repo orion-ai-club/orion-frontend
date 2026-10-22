@@ -15,6 +15,8 @@ import { toast } from '../Toast';
 import { DeleteModal } from '../DeleteModal';
 import { R2ImageSelectorModal } from '../R2ImageSelectorModal';
 import { renderSafeMarkdown, safeExternalUrl } from '../../utils/security';
+import { dataUrlToBlob } from '../../utils/dataUrl';
+import { ProjectBrandIcon } from './ProjectBrandIcon';
 
 interface ProjectShowcaseProps {
   currentUser?: User | null;
@@ -202,10 +204,11 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
         repoUrl,
         (progress: PortfolioImportProgress) => setImportProgress(progress),
         cloudflareAiToken.trim() || undefined,
-        cloudflareAccountId.trim() || undefined
+        cloudflareAccountId.trim() || undefined,
+        { generateCover: true }
       );
       setGeneratedCoverSvg(preview.coverSvg || '');
-      setGeneratedAiCoverDataUrl('');
+      setGeneratedAiCoverDataUrl(preview.coverDataUrl || '');
       setGeneratedIconDataUrl(preview.iconDataUrl || '');
       setImportedIconPath(preview.source.iconPath || '');
       setCurrentProject({
@@ -268,7 +271,8 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
         repoUrl,
         (progress: PortfolioImportProgress) => setProjectAiProgress(progress),
         cloudflareAiToken.trim() || undefined,
-        cloudflareAccountId.trim() || undefined
+        cloudflareAccountId.trim() || undefined,
+        { generateCover: !project.coverImage }
       );
 
       const synced = preview.project;
@@ -280,6 +284,7 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
         summary_en: synced.summary_en || '',
         description_zh: synced.description_zh || '',
         description_en: synced.description_en || '',
+        coverImage: existing.coverImage || synced.coverImage || '',
         techStack: synced.techStack || [],
         category: synced.category || existing.category || 'web',
         categories:
@@ -294,8 +299,12 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
         setGeneratedIconDataUrl(preview.iconDataUrl);
         setImportedIconPath(preview.source.iconPath || '');
       }
+      if (!project.coverImage && !synced.coverImage) {
+        setGeneratedAiCoverDataUrl(preview.coverDataUrl || '');
+        setGeneratedCoverSvg(preview.coverSvg || '');
+      }
 
-      toast.success('GitHub details synced. Review changes before saving.');
+      toast.success('Latest README synced. Review changes before saving.');
     } catch (error) {
       console.error(error);
       toast.error('GitHub sync failed.');
@@ -453,8 +462,7 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
     try {
       if (!processedProject.iconImage && generatedIconDataUrl) {
         setIsUploadingIcon(true);
-        const iconResponse = await fetch(generatedIconDataUrl);
-        const iconBlob = await iconResponse.blob();
+        const iconBlob = dataUrlToBlob(generatedIconDataUrl);
         const iconExt =
           iconBlob.type === 'image/svg+xml'
             ? 'svg'
@@ -491,8 +499,7 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
 
         let generatedCover: File;
         if (generatedAiCoverDataUrl) {
-          const response = await fetch(generatedAiCoverDataUrl);
-          const blob = await response.blob();
+          const blob = dataUrlToBlob(generatedAiCoverDataUrl);
           generatedCover = new File([blob], `${safeName}-cover.jpg`, {
             type: blob.type || 'image/jpeg'
           });
@@ -692,10 +699,10 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
                 </p>
                 <h2 className="mt-2 text-2xl font-bold">Import project</h2>
                 <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                  Paste a GitHub repository URL. Orion will analyse the README and package metadata,
-                  draft the portfolio copy and create a free deterministic Orion cover. You can
-                  optionally replace it with Cloudflare FLUX before saving. Nothing is persisted
-                  until you review and press Save Project.
+                  Paste a GitHub repository URL. Orion uses the latest README as the source of truth
+                  for the English title, summary and full details, then uses AI only to create the
+                  Chinese version. Existing README artwork is reused; AI generates a cover only when
+                  the repository has no suitable image. Nothing is saved until you review it.
                 </p>
               </div>
 
@@ -800,7 +807,7 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
                     ) : (
                       <>
                         <i className="fab fa-github mr-2" />
-                        Analyse repository
+                        Import latest README
                       </>
                     )}
                   </button>
@@ -1587,30 +1594,7 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
                 <div className="flex flex-1 flex-col p-6">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex min-w-0 items-center gap-3.5">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary-100 text-lg font-black text-primary-700 ring-1 ring-primary-200/70 dark:bg-primary-400/10 dark:text-primary-400 dark:ring-primary-400/15">
-                        {project.iconImage ? (
-                          <img
-                            src={project.iconImage}
-                            alt={`${title} icon`}
-                            className="h-full w-full object-contain bg-white p-1.5 dark:bg-slate-900"
-                            onError={(event) => {
-                              event.currentTarget.style.display = 'none';
-                              const fallback = event.currentTarget
-                                .nextElementSibling as HTMLElement | null;
-                              if (fallback) fallback.style.display = 'flex';
-                            }}
-                          />
-                        ) : null}
-                        <span
-                          className={
-                            project.iconImage
-                              ? 'hidden h-full w-full items-center justify-center'
-                              : 'flex h-full w-full items-center justify-center'
-                          }
-                        >
-                          {title.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
+                      <ProjectBrandIcon project={project} title={title} />
                       <div className="min-w-0">
                         <h2 className="truncate font-display text-lg font-black tracking-tight text-slate-950 transition-colors group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-400">
                           {title}
@@ -1622,15 +1606,14 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
                       </div>
                     </div>
 
-                    {project.demoUrl && (
-                      <button
-                        type="button"
-                        onClick={() => handleLiveDemoClick(project)}
-                        className="shrink-0 rounded-full bg-primary-500 px-4 py-2 text-[10px] font-black uppercase tracking-wider text-white shadow-md shadow-primary-500/20 transition hover:-translate-y-0.5 hover:bg-primary-600 dark:text-slate-950"
-                      >
-                        {language === 'zh' ? '打开' : 'Open'}
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setActiveDetailProject(project)}
+                      className="shrink-0 rounded-full bg-primary-500 px-4 py-2 text-[10px] font-black uppercase tracking-wider text-white shadow-md shadow-primary-500/20 transition hover:-translate-y-0.5 hover:bg-primary-600 dark:text-slate-950"
+                    >
+                      <i className="fas fa-circle-info mr-1.5" />
+                      {language === 'zh' ? '查看详情' : 'View Details'}
+                    </button>
                   </div>
 
                   <p className="mt-5 line-clamp-3 min-h-[4.5rem] text-sm leading-6 text-slate-600 dark:text-slate-400">
@@ -1659,7 +1642,7 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
                       onClick={() => setActiveDetailProject(project)}
                       className="group/details flex items-center gap-2 text-xs font-bold text-slate-600 transition hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400"
                     >
-                      {language === 'zh' ? '项目详情' : 'View details'}
+                      {language === 'zh' ? '详情与链接' : 'Details & links'}
                       <i className="fas fa-arrow-right text-[9px] transition-transform group-hover/details:translate-x-1" />
                     </button>
                     {project.repoUrl && (
@@ -1722,9 +1705,11 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
                 {/* Header Block */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-slate-100 dark:border-slate-800/80">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-2xl bg-primary-500 flex items-center justify-center text-white dark:text-slate-950 text-3xl font-black shadow-lg shadow-primary-500/20 flex-shrink-0 select-none">
-                      {(getLocalized(activeDetailProject, 'title') || 'P').charAt(0).toUpperCase()}
-                    </div>
+                    <ProjectBrandIcon
+                      project={activeDetailProject}
+                      title={getLocalized(activeDetailProject, 'title') || 'Project'}
+                      size="detail"
+                    />
                     <div>
                       <h2 className="text-2xl md:text-3xl font-display font-black text-slate-900 dark:text-white leading-tight">
                         {getLocalized(activeDetailProject, 'title')}
@@ -1737,15 +1722,46 @@ export const ProjectShowcase: React.FC<ProjectShowcaseProps> = ({ currentUser })
 
                   <div className="flex items-center gap-3 shrink-0">
                     {activeDetailProject.demoUrl && (
-                      <button
-                        onClick={() => {
-                          handleLiveDemoClick(activeDetailProject);
-                          setActiveDetailProject(null);
-                        }}
-                        className="px-6 py-2.5 rounded-full bg-gradient-to-r from-primary-500 to-primary-500 hover:from-primary-600 hover:to-primary-600 text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-primary-500/20 hover:shadow-primary-500/40 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
-                      >
-                        <i className="fas fa-play-circle mr-1.5"></i> {t.portfolio.liveDemo}
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = safeExternalUrl(activeDetailProject.demoUrl);
+                            if (!url) {
+                              toast.error('Invalid demo URL.');
+                              return;
+                            }
+                            setDemoProject(activeDetailProject);
+                            setSearchParams((prev) => {
+                              const next = new URLSearchParams(prev);
+                              next.set('demo', activeDetailProject._id);
+                              return next;
+                            });
+                            setViewMode('IFRAME');
+                            setIframeLoading(true);
+                            setActiveDetailProject(null);
+                          }}
+                          className="px-5 py-2.5 rounded-full bg-gradient-to-r from-primary-500 to-primary-500 hover:from-primary-600 hover:to-primary-600 text-white text-xs font-bold uppercase tracking-wider shadow-lg shadow-primary-500/20 hover:shadow-primary-500/40 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                        >
+                          <i className="fas fa-display mr-1.5"></i>{' '}
+                          {language === 'zh' ? '站内预览' : 'Preview here'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = safeExternalUrl(activeDetailProject.demoUrl);
+                            if (!url) {
+                              toast.error('Invalid demo URL.');
+                              return;
+                            }
+                            window.open(url, '_blank', 'noopener,noreferrer');
+                          }}
+                          className="px-5 py-2.5 rounded-full border border-slate-200 dark:border-slate-700 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                        >
+                          <i className="fas fa-arrow-up-right-from-square mr-1.5"></i>{' '}
+                          {language === 'zh' ? '新标签打开' : 'New tab'}
+                        </button>
+                      </>
                     )}
                     {activeDetailProject.repoUrl && (
                       <a

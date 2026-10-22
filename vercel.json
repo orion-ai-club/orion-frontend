@@ -17,6 +17,22 @@
       "dest": "https://api.samyao.me/api/$1"
     },
     {
+      "src": "/blogs",
+      "dest": "/blogs/index.html"
+    },
+    {
+      "src": "/profile",
+      "dest": "/profile/index.html"
+    },
+    {
+      "src": "/footprints",
+      "dest": "/footprints/index.html"
+    },
+    {
+      "src": "/blogs/(.+-[0-9a-fA-F]{24})",
+      "dest": "/blogs/$1/index.html"
+    },
+    {
       "handle": "filesystem"
     },
     {

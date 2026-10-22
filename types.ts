@@ -201,6 +201,7 @@ export interface PortfolioImportProgress {
 export interface PortfolioImportPreview {
   project: Partial<PortfolioProject>;
   coverSvg?: string;
+  coverDataUrl?: string;
   iconDataUrl?: string;
   source: {
     owner: string;
@@ -208,6 +209,7 @@ export interface PortfolioImportPreview {
     private: boolean;
     description?: string;
     iconPath?: string;
+    readmeBacked?: boolean;
   };
 }
 
