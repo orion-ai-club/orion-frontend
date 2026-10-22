@@ -1,0 +1,222 @@
+.memory-vault {
+  --vault-line: rgba(148, 163, 184, 0.22);
+  background: linear-gradient(140deg, #0b1422, #101b2b 60%, #13232b);
+  color: #e2e8f0;
+  min-height: 75vh;
+  padding: clamp(18px, 3vw, 40px);
+  border: 1px solid var(--vault-line);
+  border-radius: 24px;
+  font-size: 16px;
+  line-height: 1.65;
+}
+.memory-vault h1 {
+  font-size: clamp(26px, 4vw, 38px);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+}
+.memory-vault h2 {
+  font-size: 22px;
+  margin-bottom: 16px;
+}
+.memory-vault h3 {
+  font-size: 18px;
+  margin-top: 20px;
+}
+.memory-vault p {
+  margin: 10px 0;
+}
+.vault-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: start;
+  margin-bottom: 24px;
+}
+.vault-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  color: #75d8cb;
+}
+.vault-badge {
+  border: 1px solid #407e75;
+  color: #8be4d4;
+  padding: 6px 12px;
+  border-radius: 40px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.memory-vault nav {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 12px 0 24px;
+  border-bottom: 1px solid var(--vault-line);
+  margin-bottom: 24px;
+}
+.memory-vault button {
+  border: 1px solid var(--vault-line);
+  padding: 10px 16px;
+  border-radius: 10px;
+  color: inherit;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.035);
+  cursor: pointer;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.memory-vault button:hover,
+.memory-vault button[aria-current='page'] {
+  background: #224b4b;
+  border-color: #5ca79e;
+}
+.memory-vault button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.memory-vault input,
+.memory-vault textarea,
+.memory-vault select {
+  display: block;
+  background: #0d1828;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  padding: 10px;
+  color: #e2e8f0;
+  width: 100%;
+  font: inherit;
+  min-width: 0;
+}
+.memory-vault :focus-visible {
+  outline: 2px solid #68dac7;
+  outline-offset: 3px;
+}
+.vault-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.vault-stats article,
+.vault-panel {
+  border: 1px solid var(--vault-line);
+  background: #ffffff04;
+  border-radius: 16px;
+  padding: 24px;
+  min-width: 0;
+}
+.vault-stats strong {
+  display: block;
+  font-size: 32px;
+  font-variant-numeric: tabular-nums;
+  color: #91e4d5;
+}
+.vault-stats span {
+  color: #aebdd0;
+}
+.vault-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  align-items: end;
+}
+.vault-filters > input {
+  flex: 2;
+  min-width: 200px;
+}
+.vault-filters > select {
+  width: auto;
+  max-width: 100%;
+}
+.vault-filters label {
+  font-size: 13px;
+}
+.vault-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+}
+.vault-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: stretch;
+}
+.memory-vault .vault-card {
+  display: block;
+  width: 100%;
+  padding: 20px;
+  background: #112232;
+  border-radius: 14px;
+}
+.vault-card span,
+.vault-card small {
+  font-size: 13px;
+  color: #9fb5cb;
+  overflow-wrap: anywhere;
+}
+.vault-card p {
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.vault-editor {
+  display: grid;
+  gap: 14px;
+}
+.vault-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.memory-vault pre {
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #08111d;
+  border-radius: 8px;
+  padding: 14px;
+  max-height: 60vh;
+  overflow: auto;
+  margin: 12px 0;
+}
+.memory-vault details {
+  border-bottom: 1px solid var(--vault-line);
+  padding: 14px 0;
+}
+.memory-vault summary {
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.vault-notice {
+  padding: 16px;
+  border: 1px solid #87aba2;
+  border-radius: 10px;
+}
+.memory-vault .vault-danger {
+  color: #fca5a5;
+  margin-top: 20px;
+}
+@media (max-width: 800px) {
+  .vault-columns {
+    grid-template-columns: 1fr;
+  }
+  .vault-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .vault-head {
+    display: block;
+  }
+  .vault-badge {
+    display: inline-block;
+    margin-top: 10px;
+  }
+  .vault-panel {
+    padding: 16px;
+  }
+  .memory-vault nav button {
+    flex: 1 0 auto;
+  }
+}
