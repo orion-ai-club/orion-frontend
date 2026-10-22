@@ -26,13 +26,15 @@ page.on('request', req => {
     else if (path.startsWith('/memories') && ['POST', 'PATCH'].includes(req.method())) {
       saved = JSON.parse(req.postData()); memory = { ...memory, ...saved, revision: memory.revision + 1 }; payload = memory;
     } else if (path.includes('/revisions')) payload = { items: [{ _id: id, revisionNumber: 1, action: 'create', editedAt: '2026-01-01', after: memory }], nextCursor: null };
+    else if (path === '/imports' && req.method() === 'POST') payload = { _id: id, state: 'preview', counts: { added: 1, missingAssets: 1 }, preview: { warnings: ['Synthetic missing attachment'] } };
+    else if (path.endsWith('/commit')) payload = { _id: id, state: 'complete', counts: { added: 1 } };
     else if (path.startsWith('/documents/')) payload = doc;
     else if (path === '/sources') payload = { items: [{ _id: id, provider: 'manual', originalSha256: 'a'.repeat(64), status: 'ready' }], nextCursor: null };
     else if (path === '/legacy/conversations') payload = { items: [{ _id: id, sessionId: 'legacy-1', title: 'Old conversation' }], nextCursor: null };
     else if (path === '/legacy/messages') payload = { items: [{ _id: id, content: 'Read only history', images: ['https://private-leak.invalid/x'] }], nextCursor: null };
     return req.respond({ status: 200, headers, contentType: 'application/json', body: JSON.stringify(payload) });
   }
-  if (!['127.0.0.1', 'localhost'].includes(url.hostname)) { if (url.hostname === 'private-leak.invalid') externalLeaks++; else console.log('Blocked pre-existing dependency host', url.hostname); return req.abort(); }
+  if (url.protocol !== 'data:' && !['127.0.0.1', 'localhost'].includes(url.hostname)) { if (url.hostname === 'private-leak.invalid') externalLeaks++; else console.log('Blocked pre-existing dependency host', url.hostname); return req.abort(); }
   return req.continue();
 });
 const textClick = text => page.locator('::-p-text(' + text + ')').click();
@@ -57,10 +59,19 @@ try {
   await page.waitForFunction(() => document.body.textContent.includes('Read only history'));
   assert.equal(await page.$('textarea'), null);
   assert.equal(externalLeaks, 0);
+  await textClick('Sources');
+  await page.waitForSelector('input[type=file]');
+  const testFile = 'test-results/brain/synthetic-import.md';
+  await fs.mkdir('test-results/brain', { recursive: true }); await fs.writeFile(testFile, 'Synthetic import');
+  await (await page.$('input[type=file]')).uploadFile(testFile);
+  await textClick('Preview import');
+  await page.waitForFunction(() => document.body.textContent.includes('Synthetic missing attachment'));
+  await textClick('Confirm additive import');
+  await page.waitForFunction(() => document.body.textContent.includes('Current job') && document.body.textContent.includes('complete'));
   await page.setViewport({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
   await fs.mkdir('test-results/brain', { recursive: true });
   await page.screenshot({ path: 'test-results/brain/vault-mobile.png', fullPage: true });
   assert.deepEqual(errors, []);
-  console.log('PASS Phase 1 browser: real render/edit/version payload, escaped evidence, read-only legacy, zero external requests, 390px layout.');
+  console.log('PASS Phase 1 browser: real render/edit/version payload, escaped evidence, read-only legacy, zero external requests, 390px layout; Phase 2 upload/preview/missing-assets/commit UI.');
 } finally { await browser.close(); await server.close(); }

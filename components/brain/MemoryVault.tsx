@@ -1,3 +1,4 @@
+import { SourceImports, SourceAssets } from './SourceImports';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from '../../i18n/LanguageContext';
 import {
@@ -40,6 +41,7 @@ export function MemoryVault() {
   const [documents, setDocuments] = useState<BrainDocument[]>([]);
   const [docNext, setDocNext] = useState<string | null>(null);
   const [selectedSource, setSelectedSource] = useState('');
+  const [newAnchors, setNewAnchors] = useState<BrainMemory['sourceAnchors']>([]);
   const [selected, setSelected] = useState<BrainMemory | null>(null);
   const [statement, setStatement] = useState('');
   const [editType, setEditType] = useState('fact');
@@ -109,6 +111,7 @@ export function MemoryVault() {
   }, [refresh]);
   const choose = async (m: BrainMemory | null) => {
     setSelected(m);
+    setNewAnchors([]);
     setStatement(m?.statement || '');
     setEditType(m?.type || 'fact');
     setEditStatus(m?.reviewStatus || 'candidate');
@@ -129,6 +132,7 @@ export function MemoryVault() {
   const save = async () => {
     const data = {
       statement,
+      ...(!selected && newAnchors.length ? { sourceAnchors: newAnchors } : {}),
       type: editType,
       reviewStatus: editStatus,
       sensitivity,
@@ -486,6 +490,7 @@ export function MemoryVault() {
           </div>
         </>
       )}
+      {tab === 'sources' && <SourceImports zh={zh} onCommitted={refresh} />}
       {tab === 'sources' && (
         <div className="vault-columns">
           <div className="vault-list">
@@ -519,12 +524,25 @@ export function MemoryVault() {
             )}
           </div>
           <div className="vault-panel">
+            {selectedSource && <SourceAssets sourceId={selectedSource} zh={zh} />}
             {documents.map((d) => (
               <details key={d._id}>
                 <summary>
                   {d.role || 'document'} · {d.externalConversationId} · {d.externalMessageId}
                 </summary>
                 <pre>{d.rawText}</pre>
+                <button
+                  onClick={() =>
+                    void run(async () => {
+                      await choose(null);
+                      setStatement(d.rawText.slice(0, 20000));
+                      setNewAnchors([{ documentId: d._id, quote: d.rawText.slice(0, 20000) }]);
+                      setTab('memories');
+                    })
+                  }
+                >
+                  {tr('从此证据新建候选记忆', 'Create candidate from this evidence')}
+                </button>
                 <p>
                   {JSON.stringify(d.rawTimestamp ?? tr('原始日期未知', 'Original date unknown'))}
                 </p>
