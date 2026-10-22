@@ -83,3 +83,23 @@ export async function brainDownload(path: string, filename: string) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+export interface BrainConnection {
+  _id: string;
+  label: string;
+  provider: string;
+  kind: string;
+  scopes: string[];
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  lastUsedAt: string | null;
+  lastWriteAt: string | null;
+}
+export interface BrainDashboard {
+  types: Record<string, number>;
+  sources: Record<string, number>;
+  recent: BrainMemory[];
+  activity: { day: string; count: number }[];
+  connections: BrainConnection[];
+}

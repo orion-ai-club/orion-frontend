@@ -1,3 +1,5 @@
+import { KnowledgeOverview } from './KnowledgeOverview';
+import { SyncConnections } from './SyncConnections';
 import {
   Archive,
   BookOpen,
@@ -5,6 +7,8 @@ import {
   Database,
   History,
   LayoutGrid,
+  Link2,
+  MoreHorizontal,
   LockKeyhole
 } from 'lucide-react';
 import { BackupRestore } from './BackupRestore';
@@ -18,7 +22,8 @@ import {
   BrainPage,
   BrainRevision,
   BrainSource,
-  BrainDocument
+  BrainDocument,
+  BrainDashboard
 } from '../../services/brainService';
 import './vault.css';
 const types = [
@@ -33,6 +38,7 @@ const types = [
 ];
 const tabIcons = {
   overview: LayoutGrid,
+  connections: Link2,
   memories: BookOpen,
   timeline: CalendarDays,
   sources: Database,
@@ -40,13 +46,13 @@ const tabIcons = {
   legacy: History
 };
 const statuses = ['candidate', 'confirmed', 'rejected', 'disputed'];
-type Tab = 'overview' | 'memories' | 'timeline' | 'sources' | 'backup' | 'legacy';
+type Tab = 'connections' | 'overview' | 'memories' | 'timeline' | 'sources' | 'backup' | 'legacy';
 export function MemoryVault() {
   const { language } = useTranslation();
   const zh = language.startsWith('zh');
   const tr = (cn: string, en: string) => (zh ? cn : en);
   const [tab, setTab] = useState<Tab>('overview');
-  const [stats, setStats] = useState<Record<string, number | string | null>>({});
+  const [dashboard, setDashboard] = useState<BrainDashboard | null>(null);
   const [rows, setRows] = useState<BrainMemory[]>([]);
   const [next, setNext] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -117,21 +123,25 @@ export function MemoryVault() {
     },
     [query, type, status, source, from, to, tab, archived, unknownDates]
   );
-  const refresh = useCallback(async () => {
-    const [s, p] = await Promise.all([
-      brainRequest<Record<string, number>>('/stats'),
+  const loadDashboard = useCallback(async () => {
+    setDashboard(await brainRequest<BrainDashboard>('/dashboard'));
+  }, []);
+  const refreshMetadata = useCallback(async () => {
+    const [, p] = await Promise.all([
+      loadDashboard(),
       brainRequest<BrainPage<BrainSource>>('/sources')
     ]);
-    setStats(s);
     setSources(p.items);
     setSourceNext(p.nextCursor);
-    await load();
-  }, [load]);
+  }, [loadDashboard]);
+  const refresh = useCallback(async () => {
+    await Promise.all([refreshMetadata(), load()]);
+  }, [refreshMetadata, load]);
   useEffect(() => {
     let active = true;
     const timer = setTimeout(() => {
       if (active)
-        refresh().catch((e) => {
+        load().catch((e) => {
           if (active) setNotice(e.message);
         });
     }, 250);
@@ -139,7 +149,23 @@ export function MemoryVault() {
       active = false;
       clearTimeout(timer);
     };
-  }, [refresh]);
+  }, [load]);
+  useEffect(() => {
+    let active = true;
+    void refreshMetadata().catch((e) => {
+      if (active) setNotice(e.message);
+    });
+    const update = () => {
+      if (document.visibilityState === 'visible') void loadDashboard().catch(() => {});
+    };
+    const timer = setInterval(update, 20000);
+    window.addEventListener('focus', update);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      window.removeEventListener('focus', update);
+    };
+  }, [refreshMetadata, loadDashboard]);
   const choose = async (m: BrainMemory | null) => {
     setSelected(m);
     setNewAnchors([]);
@@ -192,8 +218,9 @@ export function MemoryVault() {
     setDocNext(p.nextCursor);
   };
   const tabs: [Tab, string][] = [
-    ['overview', tr('总览', 'Overview')],
-    ['memories', tr('记忆', 'Memories')],
+    ['overview', tr('知识全景', 'Overview')],
+    ['connections', tr('AI 同步', 'AI Sync')],
+    ['memories', tr('知识卡片', 'Memories')],
     ['timeline', tr('时间线 / 项目', 'Timeline / Projects')],
     ['sources', tr('来源', 'Sources')],
     ['backup', tr('备份与恢复', 'Backup & Restore')],
@@ -209,11 +236,11 @@ export function MemoryVault() {
           </span>
           <div>
             <p className="vault-eyebrow">CAPTAIN’S CABIN / SECOND BRAIN</p>
-            <h1>{tr('个人记忆库', 'Personal Memory Vault')}</h1>
+            <h1>{tr('个人知识库', 'Personal Knowledge')}</h1>
             <p>
               {tr(
-                '原始资料属于你。检索、修订与恢复，无须 AI。',
-                'Your sources, evidence and history. Search, edit and recover without AI.'
+                '把不同 AI 认识的你，留在自己这里。',
+                'Keep the context you build with every AI, in a place you own.'
               )}
             </p>
           </div>
@@ -224,22 +251,51 @@ export function MemoryVault() {
         </span>
       </header>
       <nav aria-label={tr('记忆库导航', 'Vault navigation')}>
-        {tabs.map(([key, label]) => {
-          const Icon = tabIcons[key];
-          return (
-            <button
-              key={key}
-              aria-current={tab === key ? 'page' : undefined}
-              onClick={() => {
-                setTab(key);
-                setNotice('');
-              }}
-            >
-              <Icon aria-hidden="true" />
-              {label}
-            </button>
-          );
-        })}
+        {tabs
+          .filter(([key]) => ['overview', 'memories', 'connections'].includes(key))
+          .map(([key, label]) => {
+            const Icon = tabIcons[key];
+            return (
+              <button
+                key={key}
+                aria-current={tab === key ? 'page' : undefined}
+                onClick={() => {
+                  setTab(key);
+                  setNotice('');
+                }}
+              >
+                <Icon aria-hidden="true" />
+                {label}
+              </button>
+            );
+          })}
+        <details className="vault-tools-menu">
+          <summary>
+            <MoreHorizontal aria-hidden="true" />
+            {tr('资料与备份', 'More')}
+          </summary>
+          <div>
+            {tabs
+              .filter(([key]) => !['overview', 'memories', 'connections'].includes(key))
+              .map(([key, label]) => {
+                const Icon = tabIcons[key];
+                return (
+                  <button
+                    key={key}
+                    aria-current={tab === key ? 'page' : undefined}
+                    onClick={(event) => {
+                      setTab(key);
+                      setNotice('');
+                      event.currentTarget.closest('details')?.removeAttribute('open');
+                    }}
+                  >
+                    <Icon aria-hidden="true" />
+                    {label}
+                  </button>
+                );
+              })}
+          </div>
+        </details>
       </nav>
       {notice && (
         <p className="vault-notice" role="status">
@@ -247,38 +303,35 @@ export function MemoryVault() {
         </p>
       )}
       {tab === 'overview' && (
-        <>
-          <div className="vault-stats">
-            {[
-              ['memories', tr('记忆', 'Memories')],
-              ['sources', tr('来源', 'Sources')],
-              ['documents', tr('原始文档', 'Documents')],
-              ['candidates', tr('待确认', 'To review')]
-            ].map(([key, label]) => (
-              <article key={key}>
-                <strong>{stats[key] ?? '—'}</strong>
-                <span>{label}</span>
-              </article>
-            ))}
-          </div>
-          <article className="vault-panel">
-            <h2>{tr('从资料到证据', 'From sources to evidence')}</h2>
-            <p>
-              {tr(
-                '原文与结构化记忆分别保存。修改只追加历史，未知日期不会被补造。',
-                'Original documents and editable memories are separate. Changes append history; unknown dates remain unknown.'
-              )}
-            </p>
-            <button
-              onClick={() => {
-                setTab('memories');
-                void run(() => choose(null));
-              }}
-            >
-              {tr('新增记忆', 'New memory')}
-            </button>
-          </article>
-        </>
+        <KnowledgeOverview
+          dashboard={dashboard}
+          onNew={() => {
+            setTab('memories');
+            void run(() => choose(null));
+          }}
+          onFilter={(value) => {
+            setType(value);
+            setQuery('');
+            setStatus('');
+            setSource('');
+            setFrom('');
+            setTo('');
+            setArchived(false);
+            setTab('memories');
+          }}
+          onOpen={(memory) => {
+            setTab('memories');
+            void run(() => choose(memory));
+          }}
+          onConnect={() => setTab('connections')}
+        />
+      )}
+      {tab === 'connections' && (
+        <SyncConnections
+          onChanged={() => {
+            void run(refreshMetadata);
+          }}
+        />
       )}
       {(tab === 'memories' || tab === 'timeline') && (
         <>
@@ -301,36 +354,41 @@ export function MemoryVault() {
                 <option key={t}>{t}</option>
               ))}
             </select>
-            <select
-              aria-label="Review status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-            >
-              <option value="">{tr('所有状态', 'All statuses')}</option>
-              {statuses.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-            <select
-              aria-label="Source filter"
-              value={source}
-              onChange={(e) => setSource(e.target.value)}
-            >
-              <option value="">{tr('所有来源', 'All sources')}</option>
-              {sources.map((s) => (
-                <option key={s._id} value={s._id}>
-                  {s.provider} / {s.originalFilename || s._id.slice(-6)}
-                </option>
-              ))}
-            </select>
-            <label>
-              {tr('从', 'From')}
-              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-            </label>
-            <label>
-              {tr('至', 'To')}
-              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-            </label>
+            <details className="vault-advanced-filters">
+              <summary>{tr('更多筛选', 'Filters')}</summary>
+              <div>
+                <select
+                  aria-label="Review status"
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                >
+                  <option value="">{tr('所有状态', 'All statuses')}</option>
+                  {statuses.map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </select>
+                <select
+                  aria-label="Source filter"
+                  value={source}
+                  onChange={(e) => setSource(e.target.value)}
+                >
+                  <option value="">{tr('所有来源', 'All sources')}</option>
+                  {sources.map((s) => (
+                    <option key={s._id} value={s._id}>
+                      {s.provider} / {s.originalFilename || s._id.slice(-6)}
+                    </option>
+                  ))}
+                </select>
+                <label>
+                  {tr('从', 'From')}
+                  <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+                </label>
+                <label>
+                  {tr('至', 'To')}
+                  <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+                </label>
+              </div>
+            </details>
             <button disabled={busy}>{tr('搜索', 'Search')}</button>
             <button type="button" onClick={() => void run(() => choose(null))}>
               {tr('新增记忆', 'New memory')}
