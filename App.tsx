@@ -79,6 +79,12 @@ const LeisureSpace = createLazyComponent(() => import('./pages/private/LeisureSp
 const PhotoGallery = createLazyComponent(() => import('./pages/private/PhotoGallery'));
 const FitnessSpace = createLazyComponent(() => import('./pages/private/FitnessSpace'));
 
+const KnowledgeConsent = createLazyComponent(() =>
+  import('./components/brain/KnowledgeConsent').then((module) => ({
+    default: module.KnowledgeConsent
+  }))
+);
+
 const SOCKET_URL = 'https://api.samyao.me';
 
 declare global {
@@ -475,8 +481,14 @@ const App: React.FC = () => {
                     content="Sam Yao’s engineering portfolio and technical journal covering full-stack systems, AI tooling, distributed architecture, and products built in public."
                   />
                   <link rel="canonical" href="https://samyao.me/" />
-                  <meta property="og:title" content="Sam Yao | Full-stack Engineer, Builder & Technical Journal" />
-                  <meta property="og:description" content="Engineering portfolio, technical writing, and products built in public by Sam Yao." />
+                  <meta
+                    property="og:title"
+                    content="Sam Yao | Full-stack Engineer, Builder & Technical Journal"
+                  />
+                  <meta
+                    property="og:description"
+                    content="Engineering portfolio, technical writing, and products built in public by Sam Yao."
+                  />
                   <meta property="og:url" content="https://samyao.me/" />
                 </Helmet>
                 <Hero
@@ -531,6 +543,17 @@ const App: React.FC = () => {
                 }}
                 currentUser={user}
                 onLoginRequest={() => setIsLoginModalOpen(true)}
+              />
+            }
+          />
+
+          <Route
+            path="/memory/connect"
+            element={
+              <KnowledgeConsent
+                user={user}
+                loading={isAuthChecking}
+                onLogin={() => setIsLoginModalOpen(true)}
               />
             }
           />

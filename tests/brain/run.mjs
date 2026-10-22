@@ -34,6 +34,13 @@ let memory = {
   sourceAnchors: [{ documentId: id, quote: '中文记忆' }]
 };
 let saved = null;
+let connections = [];
+const testToken = 'ov_' + 's'.repeat(43);
+const config = {
+  mcpUrl: 'https://api.example.invalid/api/brain/sync/mcp',
+  openapiUrl: 'https://api.example.invalid/api/brain/sync/openapi.json',
+  apiBaseUrl: 'https://api.example.invalid/api/brain/sync/v1'
+};
 let exportCreated = false;
 let externalLeaks = 0;
 await page.setRequestInterception(true);
@@ -56,7 +63,37 @@ page.on('request', (req) => {
     if (req.method() === 'OPTIONS') return req.respond({ status: 204, headers });
     let payload = { items: [], nextCursor: null };
     if (url.searchParams.has('query')) assert.fail('Private search text must stay out of URLs');
-    if (path === '/search' && req.method() === 'POST') {
+    if (path === '/dashboard')
+      payload = {
+        types: { identity: 28, career: 22, instruction: 5, project: 12, preference: 35 },
+        sources: { manual: 1 },
+        activity: [{ day: new Date().toISOString().slice(0, 10), count: 102 }],
+        recent: [memory],
+        connections
+      };
+    else if (path === '/connections' && req.method() === 'GET')
+      payload = { items: connections, configuration: config };
+    else if (path === '/connections' && req.method() === 'POST') {
+      const body = JSON.parse(req.postData());
+      assert.deepEqual(body.scopes, ['memory:read', 'memory:write']);
+      const connection = {
+        _id: id,
+        label: body.label,
+        provider: 'chatgpt',
+        kind: 'api-key',
+        scopes: body.scopes,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 86400000).toISOString(),
+        revokedAt: null,
+        lastUsedAt: null,
+        lastWriteAt: null
+      };
+      connections = [connection];
+      payload = { connection, token: testToken };
+    } else if (path === '/connections/' + id && req.method() === 'DELETE') {
+      connections = connections.map((c) => ({ ...c, revokedAt: new Date().toISOString() }));
+      payload = connections[0];
+    } else if (path === '/search' && req.method() === 'POST') {
       const search = JSON.parse(req.postData());
       payload = { items: search.kind === 'documents' ? [doc] : [memory], nextCursor: null };
     } else if (path === '/stats')
@@ -133,6 +170,11 @@ page.on('request', (req) => {
   return req.continue();
 });
 const textClick = (text) => page.locator('::-p-text(' + text + ')').click();
+const navClick = async (text) => {
+  if (['Sources', 'Legacy Chats', 'Backup & Restore'].includes(text))
+    await page.click('.vault-tools-menu > summary');
+  await page.locator('nav button ::-p-text(' + text + ')').click();
+};
 try {
   await page.goto(
     'http://127.0.0.1:' + server.httpServer.address().port + '/tests/brain/index.html',
@@ -146,6 +188,32 @@ try {
       getComputedStyle(el).getPropertyValue('--vault-accent').trim()
     ),
     '#e11d48'
+  );
+  await page.waitForSelector('.knowledge-you strong');
+  assert.equal(await page.$eval('.knowledge-you strong', (el) => el.textContent), '102');
+  assert.equal(await page.$$eval('.knowledge-topic', (els) => els.length), 5);
+  await page.click('[data-topic=preference]');
+  assert.equal(await page.$eval('[aria-label="Type"]', (el) => el.value), 'preference');
+  await navClick('AI Sync');
+  await page.waitForSelector('[aria-label="ChatGPT MCP URL"]');
+  assert.equal(await page.$eval('[aria-label="Claude MCP URL"]', (el) => el.value), config.mcpUrl);
+  assert.ok(await page.evaluate(() => document.body.textContent.includes('Background changes')));
+  await page.click('.knowledge-api-details > summary');
+  await textClick('Create dedicated key');
+  await page.waitForSelector('[aria-label="New connection key"]');
+  assert.equal(await page.$eval('[aria-label="New connection key"]', (el) => el.value), testToken);
+  assert.equal(
+    await page.evaluate(
+      (token) => Object.values(localStorage).some((v) => v.includes(token)),
+      testToken
+    ),
+    false
+  );
+  await textClick('Saved, close');
+  assert.equal(await page.$('[aria-label="New connection key"]'), null);
+  await textClick('Revoke');
+  await page.waitForFunction(() =>
+    document.querySelector('.knowledge-connection-list')?.textContent.includes('Revoked')
   );
   await textClick('Memories');
   await page.waitForSelector('.vault-card');
@@ -173,12 +241,12 @@ try {
     [...document.querySelectorAll('pre')].some((e) => e.textContent.includes('<img'))
   );
   assert.equal(await page.$('img'), null);
-  await textClick('Legacy Chats');
+  await navClick('Legacy Chats');
   await textClick('Old conversation');
   await page.waitForFunction(() => document.body.textContent.includes('Read only history'));
   assert.equal(await page.$('textarea'), null);
   assert.equal(externalLeaks, 0);
-  await textClick('Sources');
+  await navClick('Sources');
   await page.waitForSelector('input[type=file]');
   const testFile = 'test-results/brain/synthetic-import.md';
   await fs.mkdir('test-results/brain', { recursive: true });
@@ -194,7 +262,7 @@ try {
       document.body.textContent.includes('Current job') &&
       document.body.textContent.includes('complete')
   );
-  await textClick('Backup & Restore');
+  await navClick('Backup & Restore');
   await page.type('[aria-label="Backup passphrase"]', 'synthetic backup key 123');
   await textClick('Create & verify backup');
   await page.waitForFunction(() =>
@@ -215,6 +283,12 @@ try {
   console.log(
     'PASS Phase 1 browser: real render/edit/version payload, escaped evidence, read-only legacy, zero external requests, 390px layout; Phase 2 upload/preview/missing-assets/commit UI; Phase 3 encrypted backup/key clearing/restore preview and commit UI.'
   );
+} catch (error) {
+  await fs.mkdir('test-results/brain', { recursive: true });
+  await fs.writeFile('test-results/brain/failure.html', await page.content());
+  await page.screenshot({ path: 'test-results/brain/failure.png', fullPage: true });
+  console.error('BRAIN PAGE ERRORS', JSON.stringify(errors));
+  throw error;
 } finally {
   await browser.close();
   await server.close();
