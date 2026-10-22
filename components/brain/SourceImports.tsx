@@ -1,3 +1,4 @@
+import { JobReport } from './JobReport';
 import React, { useEffect, useState } from 'react';
 import { brainRequest, BrainJob, BrainPage, brainDownload } from '../../services/brainService';
 export function SourceImports({
@@ -101,13 +102,7 @@ export function SourceImports({
           <h3>
             {tr('本次任务', 'Current job')} · {job.state}
           </h3>
-          <pre>{JSON.stringify(job.counts, null, 2)}</pre>
-          <details open>
-            <summary>
-              {tr('警告、缺失资产与适配器信息', 'Warnings, missing assets & adapter')}
-            </summary>
-            <pre>{JSON.stringify(job.preview, null, 2)}</pre>
-          </details>
+          <JobReport job={job} zh={zh} />
           {job.errorSummary && <p>{job.errorSummary}</p>}
           {job.state !== 'complete' && (
             <button
@@ -148,7 +143,15 @@ export function SourceImports({
     </article>
   );
 }
-export function SourceAssets({ sourceId, zh }: { sourceId: string; zh: boolean }) {
+export function SourceAssets({
+  sourceId,
+  zh,
+  originalFilename
+}: {
+  sourceId: string;
+  zh: boolean;
+  originalFilename?: string;
+}) {
   const [assets, setAssets] = useState<
     { _id: string; originalName: string; availability: string }[]
   >([]);
@@ -170,9 +173,10 @@ export function SourceAssets({ sourceId, zh }: { sourceId: string; zh: boolean }
       <h3>{zh ? '原包与附件' : 'Original & attachments'}</h3>
       <button
         onClick={() =>
-          brainDownload('/sources/' + sourceId + '/original', 'original-source.bin').catch((e) =>
-            setError(e.message)
-          )
+          brainDownload(
+            '/sources/' + sourceId + '/original',
+            originalFilename || 'original-source.bin'
+          ).catch((e) => setError(e.message))
         }
       >
         {zh ? '下载原始文件' : 'Download original file'}

@@ -8,6 +8,7 @@ export interface BrainMemory {
   sensitivity: string;
   revision: number;
   eventAt?: string;
+  deletedAt?: string | null;
   updatedAt?: string;
   tags: string[];
   sourceAnchors: { documentId: string; quote?: string; start?: number; end?: number }[];

@@ -1,5 +1,16 @@
+import {
+  Archive,
+  BookOpen,
+  CalendarDays,
+  Database,
+  History,
+  LayoutGrid,
+  LockKeyhole
+} from 'lucide-react';
+import { BackupRestore } from './BackupRestore';
+import { DocumentSearch } from './DocumentSearch';
 import { SourceImports, SourceAssets } from './SourceImports';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from '../../i18n/LanguageContext';
 import {
   brainRequest,
@@ -20,8 +31,16 @@ const types = [
   'fact',
   'other'
 ];
+const tabIcons = {
+  overview: LayoutGrid,
+  memories: BookOpen,
+  timeline: CalendarDays,
+  sources: Database,
+  backup: Archive,
+  legacy: History
+};
 const statuses = ['candidate', 'confirmed', 'rejected', 'disputed'];
-type Tab = 'overview' | 'memories' | 'timeline' | 'sources' | 'legacy';
+type Tab = 'overview' | 'memories' | 'timeline' | 'sources' | 'backup' | 'legacy';
 export function MemoryVault() {
   const { language } = useTranslation();
   const zh = language.startsWith('zh');
@@ -33,6 +52,9 @@ export function MemoryVault() {
   const [query, setQuery] = useState('');
   const [type, setType] = useState('');
   const [status, setStatus] = useState('');
+  const [archived, setArchived] = useState(false);
+  const [unknownDates, setUnknownDates] = useState(false);
+  const requestSequence = useRef(0);
   const [source, setSource] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -69,7 +91,10 @@ export function MemoryVault() {
   };
   const load = useCallback(
     async (cursor?: string) => {
+      const sequence = ++requestSequence.current;
       const qs = new URLSearchParams({ limit: '30' });
+      if (archived) qs.set('archived', 'true');
+      if (tab === 'timeline') qs.set(unknownDates ? 'undated' : 'timeline', 'true');
       for (const [k, v] of Object.entries({
         query,
         type,
@@ -80,11 +105,17 @@ export function MemoryVault() {
         cursor
       }))
         if (v) qs.set(k, v);
-      const page = await brainRequest<BrainPage<BrainMemory>>('/memories?' + qs);
+      const page = query
+        ? await brainRequest<BrainPage<BrainMemory>>('/search', {
+            method: 'POST',
+            body: JSON.stringify({ kind: 'memories', ...Object.fromEntries(qs) })
+          })
+        : await brainRequest<BrainPage<BrainMemory>>('/memories?' + qs);
+      if (sequence !== requestSequence.current) return;
       setRows((old) => (cursor ? [...old, ...page.items] : page.items));
       setNext(page.nextCursor);
     },
-    [query, type, status, source, from, to]
+    [query, type, status, source, from, to, tab, archived, unknownDates]
   );
   const refresh = useCallback(async () => {
     const [s, p] = await Promise.all([
@@ -165,34 +196,50 @@ export function MemoryVault() {
     ['memories', tr('记忆', 'Memories')],
     ['timeline', tr('时间线 / 项目', 'Timeline / Projects')],
     ['sources', tr('来源', 'Sources')],
+    ['backup', tr('备份与恢复', 'Backup & Restore')],
     ['legacy', 'Legacy Chats']
   ];
   const dated = [...rows].sort((a, b) => (a.eventAt || '9999').localeCompare(b.eventAt || '9999'));
   return (
     <section className="memory-vault" aria-label="Personal Memory Vault">
       <header className="vault-head">
-        <div>
-          <p className="vault-eyebrow">ORION / PERSONAL ARCHIVE</p>
-          <h1>Personal Memory Vault</h1>
-          <p>
-            {tr(
-              '原始资料属于你。检索、修订与恢复，无须 AI。',
-              'Your sources, evidence and history. Search, edit and recover without AI.'
-            )}
-          </p>
+        <div className="vault-heading">
+          <span className="vault-emblem" aria-hidden="true">
+            <Database />
+          </span>
+          <div>
+            <p className="vault-eyebrow">CAPTAIN’S CABIN / SECOND BRAIN</p>
+            <h1>{tr('个人记忆库', 'Personal Memory Vault')}</h1>
+            <p>
+              {tr(
+                '原始资料属于你。检索、修订与恢复，无须 AI。',
+                'Your sources, evidence and history. Search, edit and recover without AI.'
+              )}
+            </p>
+          </div>
         </div>
-        <span className="vault-badge">{tr('私有 · 可追溯', 'PRIVATE · TRACEABLE')}</span>
+        <span className="vault-badge">
+          <LockKeyhole aria-hidden="true" />
+          {tr('私有 · 可追溯', 'PRIVATE · TRACEABLE')}
+        </span>
       </header>
       <nav aria-label={tr('记忆库导航', 'Vault navigation')}>
-        {tabs.map(([key, label]) => (
-          <button
-            key={key}
-            aria-current={tab === key ? 'page' : undefined}
-            onClick={() => setTab(key)}
-          >
-            {label}
-          </button>
-        ))}
+        {tabs.map(([key, label]) => {
+          const Icon = tabIcons[key];
+          return (
+            <button
+              key={key}
+              aria-current={tab === key ? 'page' : undefined}
+              onClick={() => {
+                setTab(key);
+                setNotice('');
+              }}
+            >
+              <Icon aria-hidden="true" />
+              {label}
+            </button>
+          );
+        })}
       </nav>
       {notice && (
         <p className="vault-notice" role="status">
@@ -289,6 +336,24 @@ export function MemoryVault() {
               {tr('新增记忆', 'New memory')}
             </button>
           </form>
+          <label className="vault-check">
+            <input
+              type="checkbox"
+              checked={archived}
+              onChange={(e) => setArchived(e.target.checked)}
+            />
+            {tr('查看已归档记忆（可恢复）', 'Show archived memories (recoverable)')}
+          </label>
+          {tab === 'timeline' && (
+            <label className="vault-check">
+              <input
+                type="checkbox"
+                checked={unknownDates}
+                onChange={(e) => setUnknownDates(e.target.checked)}
+              />
+              {tr('单独查看未知日期', 'Show unknown dates separately')}
+            </label>
+          )}
           <div className="vault-columns">
             <div className="vault-list">
               {(tab === 'timeline' ? dated : rows).map((m) => (
@@ -456,39 +521,77 @@ export function MemoryVault() {
                         {tr('更多历史', 'More history')}
                       </button>
                     )}
-                    <button
-                      className="vault-danger"
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            tr(
-                              '归档这条记忆？可以在版本历史和备份中找回。',
-                              'Archive this memory? Its history remains in your backup.'
+                    {selected.deletedAt ? (
+                      <button
+                        onClick={() =>
+                          void run(async () => {
+                            const restored = await brainRequest<BrainMemory>(
+                              '/memories/' + selected._id,
+                              {
+                                method: 'PATCH',
+                                body: JSON.stringify({
+                                  expectedRevision: selected.revision,
+                                  archived: false,
+                                  reason: 'User restored archive'
+                                })
+                              }
+                            );
+                            await choose(restored);
+                            await refresh();
+                          })
+                        }
+                      >
+                        {tr('恢复已归档记忆', 'Restore archived memory')}
+                      </button>
+                    ) : (
+                      <button
+                        className="vault-danger"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              tr(
+                                '归档这条记忆？可以在版本历史和备份中找回。',
+                                'Archive this memory? Its history remains in your backup.'
+                              )
                             )
                           )
-                        )
-                          void run(async () => {
-                            await brainRequest('/memories/' + selected._id, {
-                              method: 'PATCH',
-                              body: JSON.stringify({
-                                expectedRevision: selected.revision,
-                                archived: true,
-                                reason: 'User archived'
-                              })
+                            void run(async () => {
+                              await brainRequest('/memories/' + selected._id, {
+                                method: 'PATCH',
+                                body: JSON.stringify({
+                                  expectedRevision: selected.revision,
+                                  archived: true,
+                                  reason: 'User archived'
+                                })
+                              });
+                              setEditing(false);
+                              await refresh();
                             });
-                            setEditing(false);
-                            await refresh();
-                          });
-                      }}
-                    >
-                      {tr('归档记忆', 'Archive memory')}
-                    </button>
+                        }}
+                      >
+                        {tr('归档记忆', 'Archive memory')}
+                      </button>
+                    )}
                   </>
                 )}
               </aside>
             )}
           </div>
         </>
+      )}
+      {tab === 'backup' && <BackupRestore zh={zh} onRestored={refresh} />}
+      {tab === 'sources' && (
+        <DocumentSearch
+          zh={zh}
+          onCandidate={(d) =>
+            void run(async () => {
+              await choose(null);
+              setStatement(d.rawText.slice(0, 20000));
+              setNewAnchors([{ documentId: d._id, quote: d.rawText.slice(0, 20000) }]);
+              setTab('memories');
+            })
+          }
+        />
       )}
       {tab === 'sources' && <SourceImports zh={zh} onCommitted={refresh} />}
       {tab === 'sources' && (
@@ -524,7 +627,13 @@ export function MemoryVault() {
             )}
           </div>
           <div className="vault-panel">
-            {selectedSource && <SourceAssets sourceId={selectedSource} zh={zh} />}
+            {selectedSource && (
+              <SourceAssets
+                sourceId={selectedSource}
+                zh={zh}
+                originalFilename={sources.find((s) => s._id === selectedSource)?.originalFilename}
+              />
+            )}
             {documents.map((d) => (
               <details key={d._id}>
                 <summary>
