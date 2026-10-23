@@ -9,7 +9,7 @@ import {
   LayoutGrid,
   Link2,
   MoreHorizontal,
-  LockKeyhole
+  X
 } from 'lucide-react';
 import { BackupRestore } from './BackupRestore';
 import { DocumentSearch } from './DocumentSearch';
@@ -61,6 +61,12 @@ export function MemoryVault() {
   const [archived, setArchived] = useState(false);
   const [unknownDates, setUnknownDates] = useState(false);
   const requestSequence = useRef(0);
+  const historySequence = useRef(0);
+  const editorRef = useRef<HTMLElement>(null);
+  const menuRef = useRef<HTMLDetailsElement>(null);
+  const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [source, setSource] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -84,7 +90,7 @@ export function MemoryVault() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [editing, setEditing] = useState(false);
-  const run = async (fn: () => Promise<void>) => {
+  const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
     setNotice('');
     try {
@@ -111,15 +117,20 @@ export function MemoryVault() {
         cursor
       }))
         if (v) qs.set(k, v);
-      const page = query
-        ? await brainRequest<BrainPage<BrainMemory>>('/search', {
-            method: 'POST',
-            body: JSON.stringify({ kind: 'memories', ...Object.fromEntries(qs) })
-          })
-        : await brainRequest<BrainPage<BrainMemory>>('/memories?' + qs);
-      if (sequence !== requestSequence.current) return;
-      setRows((old) => (cursor ? [...old, ...page.items] : page.items));
-      setNext(page.nextCursor);
+      setLoading(true);
+      try {
+        const page = query
+          ? await brainRequest<BrainPage<BrainMemory>>('/search', {
+              method: 'POST',
+              body: JSON.stringify({ kind: 'memories', ...Object.fromEntries(qs) })
+            })
+          : await brainRequest<BrainPage<BrainMemory>>('/memories?' + qs);
+        if (sequence !== requestSequence.current) return;
+        setRows((old) => (cursor ? [...old, ...page.items] : page.items));
+        setNext(page.nextCursor);
+      } finally {
+        if (sequence === requestSequence.current) setLoading(false);
+      }
     },
     [query, type, status, source, from, to, tab, archived, unknownDates]
   );
@@ -139,6 +150,13 @@ export function MemoryVault() {
   }, [refreshMetadata, load]);
   useEffect(() => {
     let active = true;
+    const invalidate = () => {
+      ++requestSequence.current;
+    };
+    invalidate();
+    setRows([]);
+    setNext(null);
+    setLoading(true);
     const timer = setTimeout(() => {
       if (active)
         load().catch((e) => {
@@ -147,6 +165,7 @@ export function MemoryVault() {
     }, 250);
     return () => {
       active = false;
+      invalidate();
       clearTimeout(timer);
     };
   }, [load]);
@@ -166,7 +185,80 @@ export function MemoryVault() {
       window.removeEventListener('focus', update);
     };
   }, [refreshMetadata, loadDashboard]);
-  const choose = async (m: BrainMemory | null) => {
+  const labels: Record<string, [string, string]> = {
+    instruction: ['相处方式', 'Instructions'],
+    identity: ['关于我', 'Identity'],
+    career: ['职业与学习', 'Career'],
+    project: ['项目', 'Projects'],
+    preference: ['偏好', 'Preferences'],
+    decision: ['决定', 'Decisions'],
+    fact: ['知识', 'Facts'],
+    other: ['其他', 'Other'],
+    candidate: ['待确认', 'To review'],
+    confirmed: ['已确认', 'Confirmed'],
+    rejected: ['已排除', 'Rejected'],
+    disputed: ['有待核实', 'Disputed'],
+    normal: ['普通', 'Normal'],
+    sensitive: ['敏感', 'Sensitive'],
+    restricted: ['严格私密', 'Restricted']
+  };
+  const labelFor = (value: string) => (labels[value] ? tr(...labels[value]) : value);
+  const dirty =
+    editing &&
+    (statement !== (selected?.statement || '') ||
+      editType !== (selected?.type || 'fact') ||
+      editStatus !== (selected?.reviewStatus || 'candidate') ||
+      sensitivity !== (selected?.sensitivity || 'normal') ||
+      eventAt !== (selected?.eventAt?.slice(0, 10) || '') ||
+      tags !== (selected?.tags?.join(', ') || '') ||
+      !!reason);
+  const mayDiscard = () =>
+    !dirty || window.confirm(tr('放弃未保存的修改？', 'Discard unsaved changes?'));
+  const closeEditor = () => {
+    if (saving || !mayDiscard()) return;
+    ++historySequence.current;
+    setEditing(false);
+  };
+  useEffect(() => {
+    if (!dirty) return;
+    const prevent = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', prevent);
+    return () => window.removeEventListener('beforeunload', prevent);
+  }, [dirty]);
+  useEffect(() => {
+    if (!editing || (tab !== 'memories' && tab !== 'timeline')) return;
+    const frame = requestAnimationFrame(() => {
+      if (window.matchMedia('(max-width: 900px)').matches)
+        editorRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+      editorRef.current?.querySelector('textarea')?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [editing, selected?._id, tab]);
+  useEffect(() => {
+    const outside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !menuRef.current?.contains(event.target))
+        menuRef.current?.removeAttribute('open');
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && menuRef.current?.open) {
+        menuRef.current.removeAttribute('open');
+        menuRef.current.querySelector('summary')?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('pointerdown', outside);
+      document.removeEventListener('keydown', escape);
+    };
+  }, []);
+  const choose = async (m: BrainMemory | null, force = false) => {
+    if (!force && (saving || !mayDiscard())) return false;
+    const sequence = ++historySequence.current;
+
     setSelected(m);
     setNewAnchors([]);
     setStatement(m?.statement || '');
@@ -180,11 +272,22 @@ export function MemoryVault() {
     setEvidence(null);
     setRevisions([]);
     setRevisionNext(null);
+    setHistoryLoading(!!m);
     if (m) {
-      const p = await brainRequest<BrainPage<BrainRevision>>('/memories/' + m._id + '/revisions');
-      setRevisions(p.items);
-      setRevisionNext(p.nextCursor);
+      try {
+        const p = await brainRequest<BrainPage<BrainRevision>>('/memories/' + m._id + '/revisions');
+        if (sequence === historySequence.current) {
+          setRevisions(p.items);
+          setRevisionNext(p.nextCursor);
+        }
+      } catch (e) {
+        if (sequence === historySequence.current)
+          setNotice(e instanceof Error ? e.message : 'HISTORY_LOAD_FAILED');
+      } finally {
+        if (sequence === historySequence.current) setHistoryLoading(false);
+      }
     }
+    return true;
   };
   const save = async () => {
     const data = {
@@ -201,13 +304,28 @@ export function MemoryVault() {
       reason,
       ...(selected ? { expectedRevision: selected.revision } : {})
     };
-    const m = await brainRequest<BrainMemory>('/memories' + (selected ? '/' + selected._id : ''), {
-      method: selected ? 'PATCH' : 'POST',
-      body: JSON.stringify(data)
-    });
-    await refresh();
-    await choose(m);
-    setNotice(tr('已保存，并追加版本记录。', 'Saved with a new revision.'));
+    setSaving(true);
+    try {
+      const m = await brainRequest<BrainMemory>(
+        '/memories' + (selected ? '/' + selected._id : ''),
+        {
+          method: selected ? 'PATCH' : 'POST',
+          body: JSON.stringify(data)
+        }
+      );
+      await choose(m, true);
+      const results = await Promise.allSettled([refresh()]);
+      setNotice(
+        results.some((r) => r.status === 'rejected')
+          ? tr(
+              '已保存。列表刷新失败，请重新搜索。',
+              'Saved. List refresh failed; search again to reload.'
+            )
+          : tr('已保存，并追加版本记录。', 'Saved with a new revision.')
+      );
+    } finally {
+      setSaving(false);
+    }
   };
   const showDocuments = async (id: string, cursor?: string) => {
     const p = await brainRequest<BrainPage<BrainDocument>>(
@@ -219,8 +337,8 @@ export function MemoryVault() {
   };
   const tabs: [Tab, string][] = [
     ['overview', tr('知识全景', 'Overview')],
-    ['connections', tr('AI 同步', 'AI Sync')],
     ['memories', tr('知识卡片', 'Memories')],
+    ['connections', tr('连接', 'AI Sync')],
     ['timeline', tr('时间线 / 项目', 'Timeline / Projects')],
     ['sources', tr('来源', 'Sources')],
     ['backup', tr('备份与恢复', 'Backup & Restore')],
@@ -237,18 +355,8 @@ export function MemoryVault() {
           <div>
             <p className="vault-eyebrow">CAPTAIN’S CABIN / SECOND BRAIN</p>
             <h1>{tr('个人知识库', 'Personal Knowledge')}</h1>
-            <p>
-              {tr(
-                '把不同 AI 认识的你，留在自己这里。',
-                'Keep the context you build with every AI, in a place you own.'
-              )}
-            </p>
           </div>
         </div>
-        <span className="vault-badge">
-          <LockKeyhole aria-hidden="true" />
-          {tr('私有 · 可追溯', 'PRIVATE · TRACEABLE')}
-        </span>
       </header>
       <nav aria-label={tr('记忆库导航', 'Vault navigation')}>
         {tabs
@@ -269,7 +377,7 @@ export function MemoryVault() {
               </button>
             );
           })}
-        <details className="vault-tools-menu">
+        <details className="vault-tools-menu" ref={menuRef}>
           <summary>
             <MoreHorizontal aria-hidden="true" />
             {tr('资料与备份', 'More')}
@@ -323,7 +431,6 @@ export function MemoryVault() {
             setTab('memories');
             void run(() => choose(memory));
           }}
-          onConnect={() => setTab('connections')}
         />
       )}
       {tab === 'connections' && (
@@ -351,7 +458,9 @@ export function MemoryVault() {
             <select aria-label="Type" value={type} onChange={(e) => setType(e.target.value)}>
               <option value="">{tr('所有类别', 'All types')}</option>
               {types.map((t) => (
-                <option key={t}>{t}</option>
+                <option key={t} value={t}>
+                  {labelFor(t)}
+                </option>
               ))}
             </select>
             <details className="vault-advanced-filters">
@@ -364,7 +473,9 @@ export function MemoryVault() {
                 >
                   <option value="">{tr('所有状态', 'All statuses')}</option>
                   {statuses.map((s) => (
-                    <option key={s}>{s}</option>
+                    <option key={s} value={s}>
+                      {labelFor(s)}
+                    </option>
                   ))}
                 </select>
                 <select
@@ -389,7 +500,26 @@ export function MemoryVault() {
                 </label>
               </div>
             </details>
-            <button disabled={busy}>{tr('搜索', 'Search')}</button>
+            <button type="submit" disabled={loading || busy}>
+              {tr('搜索', 'Search')}
+            </button>
+            {(query || type || status || source || from || to || archived || unknownDates) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery('');
+                  setType('');
+                  setStatus('');
+                  setSource('');
+                  setFrom('');
+                  setTo('');
+                  setArchived(false);
+                  setUnknownDates(false);
+                }}
+              >
+                {tr('重置', 'Reset')}
+              </button>
+            )}
             <button type="button" onClick={() => void run(() => choose(null))}>
               {tr('新增记忆', 'New memory')}
             </button>
@@ -412,27 +542,36 @@ export function MemoryVault() {
               {tr('单独查看未知日期', 'Show unknown dates separately')}
             </label>
           )}
-          <div className="vault-columns">
-            <div className="vault-list">
+          <div className="vault-columns vault-memory-columns">
+            <div className="vault-list" aria-busy={loading}>
               {(tab === 'timeline' ? dated : rows).map((m) => (
                 <button
-                  className="vault-card"
+                  className={
+                    'vault-card' + (editing && selected?._id === m._id ? ' is-selected' : '')
+                  }
+                  aria-pressed={editing && selected?._id === m._id}
+                  disabled={saving}
                   key={m._id}
                   onClick={() => void run(() => choose(m))}
                 >
                   <span>
-                    {m.type} · {m.reviewStatus} · v{m.revision}
+                    {labelFor(m.type)} · {labelFor(m.reviewStatus)} · v{m.revision}
                   </span>
                   <p>{m.statement}</p>
                   <small>
                     {m.eventAt
-                      ? new Date(m.eventAt).toLocaleDateString()
+                      ? new Date(m.eventAt).toLocaleDateString(language, { timeZone: 'UTC' })
                       : tr('事件日期未知', 'Event date unknown')}{' '}
-                    · {m.tags.join(' / ')}
+                    {m.tags.length ? '· ' + m.tags.join(' / ') : ''}
                   </small>
                 </button>
               ))}
-              {!rows.length && (
+              {loading && (
+                <p className="vault-list-state" role="status">
+                  {tr('加载中…', 'Loading…')}
+                </p>
+              )}
+              {!loading && !rows.length && (
                 <p>
                   {tr(
                     '没有符合条件的记忆。可以手动录入或导入原始资料。',
@@ -441,16 +580,31 @@ export function MemoryVault() {
                 </p>
               )}
               {next && (
-                <button onClick={() => void run(() => load(next))}>
+                <button disabled={loading || busy} onClick={() => void run(() => load(next))}>
                   {tr('加载更多', 'Load more')}
                 </button>
               )}
             </div>
             {editing && (
-              <aside className="vault-panel">
-                <h2>
-                  {selected ? tr('修订记忆', 'Revise memory') : tr('手动记忆', 'Manual memory')}
-                </h2>
+              <aside
+                className="vault-panel vault-editor-panel"
+                ref={editorRef}
+                aria-label={tr('记忆编辑器', 'Memory editor')}
+              >
+                <div className="vault-editor-heading">
+                  <h2>
+                    {selected ? tr('编辑记忆', 'Revise memory') : tr('新增记忆', 'Manual memory')}
+                  </h2>
+                  <button
+                    type="button"
+                    className="vault-icon-button"
+                    disabled={saving}
+                    aria-label={tr('关闭编辑器', 'Close editor')}
+                    onClick={closeEditor}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
                 <form
                   className="vault-editor"
                   onSubmit={(e) => {
@@ -458,64 +612,74 @@ export function MemoryVault() {
                     void run(save);
                   }}
                 >
-                  <label>
-                    {tr('记忆正文', 'Statement')}
-                    <textarea
-                      aria-label="Statement"
-                      value={statement}
-                      onChange={(e) => setStatement(e.target.value)}
-                      maxLength={20000}
-                      required
-                      rows={6}
-                    />
-                  </label>
-                  <label>
-                    {tr('类别', 'Type')}
-                    <select value={editType} onChange={(e) => setEditType(e.target.value)}>
-                      {types.map((t) => (
-                        <option key={t}>{t}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    {tr('确认状态', 'Review status')}
-                    <select value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
-                      {statuses.map((t) => (
-                        <option key={t}>{t}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    {tr('敏感级别', 'Sensitivity')}
-                    <select value={sensitivity} onChange={(e) => setSensitivity(e.target.value)}>
-                      {['normal', 'sensitive', 'restricted'].map((t) => (
-                        <option key={t}>{t}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    {tr('事件日期（未知可留空）', 'Event date (leave unknown blank)')}
-                    <input
-                      type="date"
-                      value={eventAt}
-                      onChange={(e) => setEventAt(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    {tr('标签（逗号分隔）', 'Tags (comma separated)')}
-                    <input value={tags} onChange={(e) => setTags(e.target.value)} />
-                  </label>
-                  <label>
-                    {tr('修改原因', 'Reason')}
-                    <input
-                      value={reason}
-                      onChange={(e) => setReason(e.target.value)}
-                      maxLength={1000}
-                    />
-                  </label>
+                  <fieldset disabled={saving} className="vault-editor-fields">
+                    <label className="vault-field-wide">
+                      {tr('记忆正文', 'Statement')}
+                      <textarea
+                        aria-label="Statement"
+                        value={statement}
+                        onChange={(e) => setStatement(e.target.value)}
+                        maxLength={20000}
+                        required
+                        rows={6}
+                      />
+                    </label>
+                    <label>
+                      {tr('类别', 'Type')}
+                      <select value={editType} onChange={(e) => setEditType(e.target.value)}>
+                        {types.map((t) => (
+                          <option key={t} value={t}>
+                            {labelFor(t)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      {tr('确认状态', 'Review status')}
+                      <select value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
+                        {statuses.map((t) => (
+                          <option key={t} value={t}>
+                            {labelFor(t)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      {tr('敏感级别', 'Sensitivity')}
+                      <select value={sensitivity} onChange={(e) => setSensitivity(e.target.value)}>
+                        {['normal', 'sensitive', 'restricted'].map((t) => (
+                          <option key={t} value={t}>
+                            {labelFor(t)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      {tr('事件日期（未知可留空）', 'Event date (leave unknown blank)')}
+                      <input
+                        type="date"
+                        value={eventAt}
+                        onChange={(e) => setEventAt(e.target.value)}
+                      />
+                    </label>
+                    <label>
+                      {tr('标签（逗号分隔）', 'Tags (comma separated)')}
+                      <input value={tags} onChange={(e) => setTags(e.target.value)} />
+                    </label>
+                    <label>
+                      {tr('修改原因', 'Reason')}
+                      <input
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        maxLength={1000}
+                      />
+                    </label>
+                  </fieldset>
                   <div className="vault-actions">
-                    <button disabled={busy}>{tr('保存并记录版本', 'Save revision')}</button>
-                    <button type="button" onClick={() => setEditing(false)}>
+                    <button type="submit" disabled={saving || !statement.trim()}>
+                      {saving ? tr('保存中…', 'Saving…') : tr('保存', 'Save revision')}
+                    </button>
+                    <button type="button" disabled={saving} onClick={closeEditor}>
                       {tr('取消', 'Cancel')}
                     </button>
                   </div>
@@ -525,13 +689,15 @@ export function MemoryVault() {
                     <h3>{tr('证据', 'Evidence')}</h3>
                     {selected.sourceAnchors.map((a) => (
                       <button
-                        key={a.documentId}
+                        key={a.documentId + (a.start ?? a.quote ?? '')}
                         onClick={() =>
-                          void run(async () =>
-                            setEvidence(
-                              await brainRequest<BrainDocument>('/documents/' + a.documentId)
-                            )
-                          )
+                          void run(async () => {
+                            const sequence = historySequence.current;
+                            const document = await brainRequest<BrainDocument>(
+                              '/documents/' + a.documentId
+                            );
+                            if (sequence === historySequence.current) setEvidence(document);
+                          })
                         }
                       >
                         {a.quote || a.documentId}
@@ -547,6 +713,7 @@ export function MemoryVault() {
                       </article>
                     )}
                     <h3>{tr('版本历史', 'Revision history')}</h3>
+                    {historyLoading && <p role="status">{tr('加载版本…', 'Loading revisions…')}</p>}
                     {revisions.map((r) => (
                       <details key={r._id}>
                         <summary>
@@ -568,9 +735,11 @@ export function MemoryVault() {
                       <button
                         onClick={() =>
                           void run(async () => {
+                            const sequence = historySequence.current;
                             const p = await brainRequest<BrainPage<BrainRevision>>(
                               '/memories/' + selected._id + '/revisions?cursor=' + revisionNext
                             );
+                            if (sequence !== historySequence.current) return;
                             setRevisions((r) => [...r, ...p.items]);
                             setRevisionNext(p.nextCursor);
                           })
@@ -594,7 +763,7 @@ export function MemoryVault() {
                                 })
                               }
                             );
-                            await choose(restored);
+                            await choose(restored, true);
                             await refresh();
                           })
                         }
@@ -643,7 +812,7 @@ export function MemoryVault() {
           zh={zh}
           onCandidate={(d) =>
             void run(async () => {
-              await choose(null);
+              if (!(await choose(null))) return;
               setStatement(d.rawText.slice(0, 20000));
               setNewAnchors([{ documentId: d._id, quote: d.rawText.slice(0, 20000) }]);
               setTab('memories');
