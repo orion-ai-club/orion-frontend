@@ -34,14 +34,12 @@ export function KnowledgeOverview({
   dashboard,
   onFilter,
   onOpen,
-  onNew,
-  onConnect
+  onNew
 }: {
   dashboard: BrainDashboard | null;
   onFilter: (type: string) => void;
   onOpen: (memory: BrainMemory) => void;
   onNew: () => void;
-  onConnect: () => void;
 }) {
   const { language } = useTranslation(),
     zh = language.startsWith('zh');
@@ -69,22 +67,23 @@ export function KnowledgeOverview({
     return { day, count: dashboard.activity.find((a) => a.day === day)?.count || 0 };
   });
   const maxActivity = Math.max(1, ...activity.map((a) => a.count));
-  const actualConnections = dashboard.connections.filter((c) => c.lastUsedAt);
   return (
     <div className="knowledge-overview">
-      <div className="knowledge-intro">
-        <div>
-          <p className="knowledge-kicker">
-            {tr('你的知识，在这里连接', 'A little more you, every day')}
-          </p>
-          <h2>{tr('一个大脑，不止一个 AI。', 'One brain. Every AI.')}</h2>
-          <p>
-            {tr(
-              '身份、偏好、项目与经历，慢慢汇成你自己的知识。',
-              'Your context, preferences and ideas, kept together in a place you own.'
-            )}
-          </p>
-        </div>
+      <div className="knowledge-toolbar">
+        <dl className="knowledge-summary">
+          <div>
+            <dt>{tr('知识', 'Memories')}</dt>
+            <dd>{total}</dd>
+          </div>
+          <div>
+            <dt>{tr('类别', 'Categories')}</dt>
+            <dd>{active.length}</dd>
+          </div>
+          <div>
+            <dt>{tr('来源', 'Sources')}</dt>
+            <dd>{Object.values(dashboard.sources).reduce((a, b) => a + b, 0)}</dd>
+          </div>
+        </dl>
         <button className="knowledge-primary" onClick={onNew}>
           <Plus size={17} />
           {tr('新增记忆', 'New memory')}
@@ -94,8 +93,8 @@ export function KnowledgeOverview({
         <article className="knowledge-map-panel">
           <div className="knowledge-panel-heading">
             <div>
-              <h3>{tr('知识星图', 'Your knowledge constellation')}</h3>
-              <p>{tr('按类别连接，点击探索', 'Organized by category. Select one to explore.')}</p>
+              <h3>{tr('知识分布', 'Knowledge map')}</h3>
+              <p>{tr('按类别查看', 'Browse by category')}</p>
             </div>
             <Orbit size={21} />
           </div>
@@ -119,7 +118,7 @@ export function KnowledgeOverview({
             <div className="knowledge-you">
               <UserRound size={25} />
               <strong>{total}</strong>
-              <span>{tr('条个人知识', 'memories of you')}</span>
+              <span>{tr('条知识', 'memories')}</span>
             </div>
             {points.map((p) => {
               const Icon = p.icon;
@@ -151,15 +150,13 @@ export function KnowledgeOverview({
             <span>
               {active.length} {tr('个知识类别', 'categories')}
             </span>
-            <span>
-              {tr('来源与修改记录持续保留', 'Sources and revisions stay with each memory')}
-            </span>
+            <span>{tr('点击类别筛选', 'Select a category to filter')}</span>
           </div>
         </article>
         <div className="knowledge-side">
           <article className="knowledge-composition">
             <div className="knowledge-panel-heading">
-              <h3>{tr('我的知识构成', 'What makes up your knowledge')}</h3>
+              <h3>{tr('分类统计', 'Categories')}</h3>
               <span>
                 {total} {tr('条', 'total')}
               </span>
@@ -183,7 +180,7 @@ export function KnowledgeOverview({
           </article>
           <article className="knowledge-activity">
             <div className="knowledge-panel-heading">
-              <h3>{tr('知识在生长', 'A growing memory')}</h3>
+              <h3>{tr('更新记录', 'Activity')}</h3>
               <span>{tr('近 14 天', 'Last 14 days')}</span>
             </div>
             <div
@@ -209,27 +206,11 @@ export function KnowledgeOverview({
               {tr('次新增与修订', 'additions and revisions')}
             </p>
           </article>
-          <button className="knowledge-connect-teaser" onClick={onConnect}>
-            <span className="knowledge-client-symbols">
-              <b>G</b>
-              <b>C</b>
-            </span>
-            <span>
-              <strong>{tr('连接日常 AI', 'Connect your everyday AI')}</strong>
-              <small>
-                {actualConnections.length
-                  ? tr('查看连接与最近同步', 'View connections and recent syncs')
-                  : tr('连接后，在聊天中保存知识', 'Keep useful context from your conversations')}
-              </small>
-            </span>
-            <ArrowUpRight size={19} />
-          </button>
         </div>
       </div>
       <div className="knowledge-panel-heading knowledge-recent-title">
         <div>
-          <h3>{tr('最近更新', 'Recently added to your story')}</h3>
-          <p>{tr('每条知识，都能找到它的来处。', 'Every memory has a source and a history.')}</p>
+          <h3>{tr('最近更新', 'Recently updated')}</h3>
         </div>
         <button onClick={() => onFilter('')}>
           {tr('全部知识', 'All memories')} <ArrowUpRight size={16} />
@@ -264,12 +245,7 @@ export function KnowledgeOverview({
         {!total && (
           <div className="knowledge-empty">
             <BookOpen size={25} />
-            <p>
-              {tr(
-                '从第一条关于你的知识开始。',
-                'Start with the first little thing worth remembering.'
-              )}
-            </p>
+            <p>{tr('暂无知识记录', 'No memories yet')}</p>
             <button onClick={onNew}>{tr('新增记忆', 'New memory')}</button>
           </div>
         )}

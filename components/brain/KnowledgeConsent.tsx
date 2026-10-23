@@ -81,7 +81,7 @@ export function KnowledgeConsent({
           <Link2 size={29} />
         </div>
         <p className="vault-eyebrow">ORION · PERSONAL KNOWLEDGE</p>
-        <h1>{tr('把你的知识，连接到日常对话', 'Bring your knowledge into the conversation')}</h1>
+        <h1>{tr('授权连接', 'Authorize connection')}</h1>
         {info && (
           <>
             <h2>{info.clientName}</h2>

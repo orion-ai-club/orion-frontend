@@ -146,8 +146,8 @@ export const PrivateSpaceDashboard: React.FC<PrivateSpaceDashboardProps> = ({ us
       ${getBackgroundClass()}
     `}
     >
-      {/* Floating News Widget - Persistent across tabs */}
-      <NewsWidget />
+      {/* Keep the knowledge editor free from floating overlays. */}
+      {activeTab !== 'SECOND_BRAIN' && <NewsWidget />}
 
       {/* --- RENDER THEMES --- */}
       {activeHoliday === 'CHRISTMAS' && <ChristmasTheme />}
