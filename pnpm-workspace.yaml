@@ -1,6 +1,6 @@
 overrides:
   '@grpc/grpc-js@<1.13.6': ^1.13.6
-  undici: 6.29.0
+  undici: 6.29.1
 
 allowBuilds:
   esbuild: false
