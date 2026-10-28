@@ -32,7 +32,7 @@ html.dark {
 }
 
 body {
-  font-family: 'Inter', 'Noto Sans SC', sans-serif;
+  font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior-y: none;
