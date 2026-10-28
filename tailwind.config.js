@@ -5,8 +5,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Sen', 'system-ui', 'sans-serif'],
+        sans: ['Inter', '"Noto Sans SC"', 'system-ui', 'sans-serif'],
+        display: ['Sen', '"Noto Sans SC"', 'system-ui', 'sans-serif'],
         serif: [
           '"Playfair Display"',
           '"Noto Serif SC"',
