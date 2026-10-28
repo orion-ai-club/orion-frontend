@@ -4,6 +4,7 @@ import { Routes, Route, Navigate, useLocation, useNavigate, Outlet } from 'react
 import { Header } from './components/Header';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { Hero } from './components/Hero';
+import { MiamiCreed } from './components/MiamiCreed';
 import { CosmicBackground } from './components/CosmicBackground';
 import { ScenicBackground } from './components/ScenicBackground';
 import { ToastContainer, toast } from './components/Toast';
@@ -507,6 +508,7 @@ const App: React.FC = () => {
                     onLoginRequest={() => setIsLoginModalOpen(true)}
                   />
                 </div>
+                <MiamiCreed />
               </>
             }
           />
