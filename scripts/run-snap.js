@@ -10,14 +10,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.resolve(__dirname, '../dist');
 
 // 🔥 配置并发数 (Vercel 建议 3-5)
-const CONCURRENCY_LIMIT = 5;
+// Keep Chrome memory bounded on local WSL and Vercel build machines.
+const CONCURRENCY_LIMIT = 3;
 
 // 1. 静态页面路由
 const STATIC_ROUTES = ['/', '/blogs', '/profile', '/footprints', '/404'];
 
 // 2. API 地址
-const API_BASE_URL =
-  'https://api.samyao.me/api';
+const API_BASE_URL = 'https://api.samyao.me/api';
 const POSTS_URL = API_BASE_URL + '/posts?page=1&limit=1000';
 
 const isVercel = process.env.VERCEL === '1';
@@ -101,7 +101,8 @@ async function snapPage(browser, route, index, total) {
         'access-control-allow-origin': previewOrigin,
         'access-control-allow-credentials': 'true',
         'access-control-allow-methods': 'GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS',
-        'access-control-allow-headers': req.headers()['access-control-request-headers'] || 'content-type,authorization'
+        'access-control-allow-headers':
+          req.headers()['access-control-request-headers'] || 'content-type,authorization'
       };
 
       try {
@@ -125,7 +126,9 @@ async function snapPage(browser, route, index, total) {
         const body = Buffer.from(await upstream.arrayBuffer());
         const responseHeaders = {};
         upstream.headers.forEach((value, key) => {
-          if (!['content-encoding', 'transfer-encoding', 'content-length'].includes(key.toLowerCase())) {
+          if (
+            !['content-encoding', 'transfer-encoding', 'content-length'].includes(key.toLowerCase())
+          ) {
             responseHeaders[key] = value;
           }
         });
@@ -190,7 +193,8 @@ async function snapPage(browser, route, index, total) {
       const root = document.getElementById('root');
       if (root) root.setAttribute('data-prerender-path', renderedRoute);
 
-      const absoluteUrl = new URL(renderedRoute === '/' ? '/' : renderedRoute, 'https://samyao.me').href;
+      const absoluteUrl = new URL(renderedRoute === '/' ? '/' : renderedRoute, 'https://samyao.me')
+        .href;
       let canonical = document.querySelector('link[rel="canonical"]');
       if (!canonical) {
         canonical = document.createElement('link');
@@ -296,6 +300,15 @@ async function snapPage(browser, route, index, total) {
     }
 
     const settled = await Promise.all(results);
+    // Intermittent API/Chrome scheduling delays under concurrent prerendering
+    // should not poison a production deployment. Retry failures serially;
+    // still fail the build if the required SEO DOM never renders.
+    for (let i = 0; i < settled.length; i++) {
+      if (!settled[i]) {
+        console.warn(`♻️ Retrying prerender serially: ${ALL_ROUTES[i]}`);
+        settled[i] = await snapPage(browser, ALL_ROUTES[i], i, total);
+      }
+    }
     const failedCount = settled.filter((ok) => !ok).length;
     if (failedCount > 0) {
       throw new Error(`Prerender failed for ${failedCount} of ${total} routes`);

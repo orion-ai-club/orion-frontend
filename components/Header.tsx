@@ -4,6 +4,7 @@ import { Theme, PageView, User, AuditLog, ChatUser, PERM_KEYS, can, Language } f
 import { useTranslation } from '../i18n/LanguageContext';
 import { Socket } from 'socket.io-client';
 import { toast } from './Toast';
+import { API_BASE_URL } from '../services/core';
 
 interface HeaderProps {
   theme: Theme;
@@ -114,6 +115,76 @@ export const Header: React.FC<HeaderProps> = ({
       window.removeEventListener('sys_notification' as any, handleSysNotification);
     };
   }, [socket, currentUser]);
+
+  // Worker CRUD records are persisted in MongoDB and polled by ObjectId cursor.
+  // The old Socket.IO listener above stays connected for legacy Cloud Run
+  // notifications and chat, but Worker events never depend on Cloud Run.
+  useEffect(() => {
+    if (!can(currentUser, PERM_KEYS.SYSTEM_LOGS)) return;
+
+    let stopped = false;
+    let inFlight = false;
+    let cursor: string | null = null;
+    const seenIds = new Set<string>();
+
+    const poll = async () => {
+      if (stopped || inFlight || document.visibilityState === 'hidden') return;
+      inFlight = true;
+      try {
+        const query = cursor ? '?after=' + encodeURIComponent(cursor) : '';
+        const response = await fetch(API_BASE_URL + '/audit/worker-events' + query, {
+          credentials: 'include',
+          cache: 'no-store',
+          headers: { Accept: 'application/json' }
+        });
+        if (!response.ok) return;
+
+        const payload: {
+          events?: Array<{ id: string; message: string; timestamp: string; log: AuditLog }>;
+          cursor?: string | null;
+        } = await response.json();
+        if (stopped) return;
+        const events = Array.isArray(payload.events) ? payload.events : [];
+        const fresh = events.filter((item) => {
+          if (!item || typeof item.id !== 'string' || seenIds.has(item.id)) return false;
+          seenIds.add(item.id);
+          return true;
+        });
+        if (typeof payload.cursor === 'string') cursor = payload.cursor;
+        if (fresh.length > 0) {
+          setNotifications((previous) =>
+            [
+              ...fresh.reverse().map((item) => ({
+                type: 'audit',
+                message: item.message,
+                timestamp: new Date(item.timestamp),
+                payload: { message: item.message, log: item.log }
+              })),
+              ...previous
+            ].slice(0, 100)
+          );
+          setUnreadCount((count) => count + fresh.length);
+        }
+        // Keep a bounded dedupe set; the cursor carries long-term progress.
+        if (seenIds.size > 200) {
+          for (const id of [...seenIds].slice(0, seenIds.size - 100)) seenIds.delete(id);
+        }
+      } catch {
+        // Lost connectivity never discards the cursor. A later poll catches up.
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    void poll();
+    const timer = window.setInterval(() => {
+      void poll();
+    }, 8_000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [currentUser]);
 
   // OPTIMIZATION: Throttled scroll listener
   useEffect(() => {
