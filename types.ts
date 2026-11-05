@@ -64,7 +64,6 @@ export interface User {
   phone?: string;
   photoURL?: string;
   token?: string;
-  vip?: boolean;
   private_token?: string;
   date?: string;
   // 🔥🔥🔥 New: Fitness Goal & Height

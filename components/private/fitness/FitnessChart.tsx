@@ -248,7 +248,9 @@ export const FitnessChart: React.FC<FitnessChartProps> = ({
                 <div className="flex flex-col text-left min-w-0 flex-1">
                   <span className="font-bold text-sm leading-none truncate flex items-center gap-1">
                     {user.displayName}{' '}
-                    {user.vip && <i className="fas fa-star text-[8px] text-yellow-300"></i>}
+                    {user.role === 'super_admin' && (
+                      <i className="fas fa-star text-[8px] text-yellow-300"></i>
+                    )}
                   </span>
                   <span className="text-[9px] opacity-70 font-mono truncate">{user.email}</span>
                 </div>

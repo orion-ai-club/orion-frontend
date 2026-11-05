@@ -21,17 +21,6 @@ export const authService = {
     return res;
   },
 
-  verifySecret: async (secret: string): Promise<boolean> => {
-    const res = await fetchClient<{ success: boolean; code: number; message: string }>(
-      '/auth/verify-secret',
-      {
-        method: 'POST',
-        body: JSON.stringify({ secret })
-      }
-    );
-    return res.success;
-  },
-
   // --- Users ---
   login: async (email: string, password: string): Promise<{ token: string; user?: User }> => {
     const response = await fetchClient<{ token: string; user?: User }>('/users/signin', {
@@ -67,17 +56,6 @@ export const authService = {
     return await fetchClient('/users/password', {
       method: 'PUT',
       body: JSON.stringify({ oldPassword, newPassword })
-    });
-  },
-
-  resetPasswordBySecret: async (
-    email: string,
-    newPassword: string,
-    secretKey: string
-  ): Promise<any> => {
-    return await fetchClient('/users/reset-by-secret', {
-      method: 'POST',
-      body: JSON.stringify({ email, newPassword, secretKey })
     });
   },
 
@@ -128,20 +106,6 @@ export const authService = {
       body: JSON.stringify({ idToken })
     });
     return response;
-  },
-
-  grantVip: async (email: string): Promise<any> => {
-    return await fetchClient('/users/grant-vip', {
-      method: 'PUT',
-      body: JSON.stringify({ email })
-    });
-  },
-
-  revokeVip: async (email: string): Promise<any> => {
-    return await fetchClient('/users/revoke-vip', {
-      method: 'PUT',
-      body: JSON.stringify({ email })
-    });
   },
 
   updateUserRole: async (id: string, role: string): Promise<any> => {

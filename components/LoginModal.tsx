@@ -17,7 +17,6 @@ type LoginMethod = 'email' | 'mobile';
 
 export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginSuccess }) => {
   const [isRegister, setIsRegister] = useState(false);
-  const [isReset, setIsReset] = useState(false);
 
   // Login Tab State
   const [loginMethod, setLoginMethod] = useState<LoginMethod>('email');
@@ -37,7 +36,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
   const [phone, setPhone] = useState(''); // Stores raw phone with country code from PhoneInput
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
-  const [secretKey, setSecretKey] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -86,7 +84,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
       setIsLoading(false);
       setPassword('');
       setPasswordConfirm('');
-      setSecretKey('');
       setOtpCode('');
       setOnboardingName('');
       setStep('input');
@@ -96,7 +93,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
         setEmail('');
       }
     }
-  }, [isOpen, isRegister, isReset, useOtp]);
+  }, [isOpen, isRegister, useOtp]);
 
   // Firebase reCAPTCHA initialization
   useEffect(() => {
@@ -177,7 +174,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
         if (phone && phone.length < 5) {
           errors.phone = 'Invalid phone number';
         }
-      } else if (!isReset) {
+      } else {
         if (loginMethod === 'email') {
           if (!email.trim()) errors.email = t.login.email + ' is required';
         } else {
@@ -327,12 +324,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
       setIsLoading(true);
 
       try {
-        if (isReset) {
-          await apiService.resetPasswordBySecret(email, password, secretKey);
-          setIsReset(false);
-          setSecretKey('');
-          setPassword('');
-        } else if (isRegister) {
+        if (isRegister) {
           const formattedPhone = phone ? `+${phone}` : undefined;
           const response = await apiService.register(
             name,
@@ -365,14 +357,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
 
   const toggleRegister = () => {
     setIsRegister(!isRegister);
-    setIsReset(false);
-    setError('');
-    setValidationErrors({});
-  };
-
-  const toggleReset = () => {
-    setIsReset(!isReset);
-    setIsRegister(false);
     setError('');
     setValidationErrors({});
   };
@@ -394,9 +378,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
     if (isRegister) {
       title = t.login.welcomeRegister;
       subtitle = t.login.subtitleRegister;
-    } else if (isReset) {
-      title = t.login.welcomeReset;
-      subtitle = t.login.subtitleReset;
     }
   }
 
@@ -427,9 +408,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                     : step === 'verify'
                       ? 'fa-shield-alt'
                       : 'fa-user-tag'
-                  : isReset
-                    ? 'fa-key'
-                    : 'fa-fingerprint'
+                  : 'fa-fingerprint'
               } text-xl`}
             ></i>
           </div>
@@ -593,7 +572,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
           {!useOtp && (
             <>
               {/* Login Tabs */}
-              {!isRegister && !isReset && (
+              {!isRegister && (
                 <div className="flex border-b border-slate-200 dark:border-slate-800 mb-6">
                   <button
                     type="button"
@@ -638,7 +617,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                 </div>
               )}
 
-              {(isRegister || isReset || loginMethod === 'email') && (
+              {(isRegister || loginMethod === 'email') && (
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2 pl-1">
                     {t.login.email} <RequiredStar />
@@ -658,7 +637,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                 </div>
               )}
 
-              {(isRegister || (!isReset && loginMethod === 'mobile')) && (
+              {(isRegister || loginMethod === 'mobile') && (
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2 pl-1">
                     {t.login.phone}
@@ -694,7 +673,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2 pl-1">
-                  {isReset ? t.login.newPassword : t.login.password} <RequiredStar />
+                  {t.login.password} <RequiredStar />
                 </label>
                 <input
                   type="password"
@@ -729,22 +708,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
                   )}
                 </div>
               )}
-
-              {isReset && (
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-2 pl-1">
-                    {t.login.secretKey} <RequiredStar />
-                  </label>
-                  <input
-                    type="password"
-                    value={secretKey}
-                    onChange={(e) => setSecretKey(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-[#0a0f1e] border border-red-200 dark:border-red-900/50 focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 outline-none transition-all text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 font-mono text-sm"
-                    placeholder="Secret Protocol Key"
-                    required={isReset}
-                  />
-                </div>
-              )}
             </>
           )}
 
@@ -766,8 +729,6 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
               ) : (
                 'Complete & Onboard'
               )
-            ) : isReset ? (
-              t.login.reset
             ) : isRegister ? (
               t.login.register
             ) : (
@@ -781,14 +742,13 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
             onClick={() => {
               setUseOtp(!useOtp);
               setIsRegister(false);
-              setIsReset(false);
             }}
             className="text-primary-500 hover:text-primary-600 transition-colors font-bold tracking-widest mb-1"
           >
             {useOtp ? '👉 Use password login (Legacy)' : '👉 Use verification code login'}
           </button>
 
-          {!useOtp && !isReset && (
+          {!useOtp && (
             <button
               onClick={toggleRegister}
               className="text-slate-500 dark:text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
@@ -799,10 +759,17 @@ export const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLogin
 
           {!useOtp && !isRegister && (
             <button
-              onClick={toggleReset}
-              className="text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+              type="button"
+              onClick={() => {
+                setUseOtp(true);
+                setLoginMethod('email');
+                setStep('input');
+                setError('');
+                setValidationErrors({});
+              }}
+              className="text-slate-400 dark:text-slate-500 hover:text-primary-500 dark:hover:text-primary-400 transition-colors"
             >
-              {isReset ? t.login.backToLogin : t.login.forgotPassword}
+              Forgot password? Sign in with a verification code
             </button>
           )}
         </div>
