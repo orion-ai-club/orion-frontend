@@ -394,7 +394,7 @@ export const BlogList: React.FC<BlogListProps> = ({
       ) : blogs.length > 0 ? (
         <div className="grid gap-6 lg:grid-cols-2">
           {blogs.map((blog, index) => {
-            const canDelete = currentUser?.vip && onDeletePost;
+            const canDelete = currentUser?.role === 'super_admin' && onDeletePost;
             const isLiked = likedPosts.has(blog._id);
             const isFeatured = index === 0 && currentPage === 1 && !searchQuery && !selectedTag;
             const authorName = blog.user?.displayName || blog.author || 'Anonymous';

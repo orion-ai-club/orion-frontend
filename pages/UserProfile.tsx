@@ -392,7 +392,7 @@ export const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) 
                   {getRoleLabel(user.role)}
                 </div>
               )}
-              {user.vip && (
+              {user.role === 'super_admin' && (
                 <div className="inline-flex items-center px-2 py-0.5 bg-amber-500/10 text-amber-500 rounded-full text-[10px] font-bold uppercase tracking-widest border border-amber-500/20">
                   <i className="fas fa-crown mr-1"></i> {t.profile.vipBadge}
                 </div>
@@ -612,8 +612,8 @@ export const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) 
             </form>
           </div>
 
-          {/* VIP Data Management */}
-          {user.vip && (
+          {/* Admin Data Management */}
+          {user.role === 'super_admin' && (
             <div className="bg-white/50 dark:bg-slate-900/50 backdrop-blur-md rounded-3xl p-8 border border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-3 mb-6">
                 <i className="fas fa-database text-blue-500 text-xl"></i>

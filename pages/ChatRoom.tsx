@@ -71,7 +71,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ currentUser, socket, targetU
   const fetchDirectory = useCallback(async (page: number) => {
     setIsLoadingDir(true);
     try {
-      const { data, pagination } = await apiService.getUsers(page, 20, '', 'vip', 'desc');
+      const { data, pagination } = await apiService.getUsers(page, 20, '', 'role', 'desc');
 
       setDirectoryUsers((prev) => {
         const newUsers = page === 1 ? data : [...prev, ...data];
@@ -122,8 +122,8 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ currentUser, socket, targetU
         return PRIORITY_EMAILS.indexOf(emailA) - PRIORITY_EMAILS.indexOf(emailB);
       }
 
-      if (a.vip && !b.vip) return -1;
-      if (!a.vip && b.vip) return 1;
+      if (a.role === 'super_admin' && b.role !== 'super_admin') return -1;
+      if (a.role !== 'super_admin' && b.role === 'super_admin') return 1;
 
       return 0;
     });
@@ -454,7 +454,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ currentUser, socket, targetU
                 >
                   <div className="relative">
                     <div
-                      className={`w-8 h-8 rounded-full overflow-hidden bg-slate-700 ring-1 ${u.vip ? 'ring-amber-500' : 'ring-slate-600'}`}
+                      className={`w-8 h-8 rounded-full overflow-hidden bg-slate-700 ring-1 ${u.role === 'super_admin' ? 'ring-amber-500' : 'ring-slate-600'}`}
                     >
                       <img
                         src={
@@ -477,7 +477,9 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ currentUser, socket, targetU
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-bold truncate flex items-center gap-1">
                       {u.displayName} {isMe && `(${t.chat.me})`}
-                      {u.vip && <i className="fas fa-star text-[8px] text-amber-500"></i>}
+                      {u.role === 'super_admin' && (
+                        <i className="fas fa-star text-[8px] text-amber-500"></i>
+                      )}
                     </div>
                     {typingUsers.has(u.displayName) ? (
                       <div className="text-[10px] text-emerald-400 animate-pulse font-mono">
@@ -485,7 +487,7 @@ export const ChatRoom: React.FC<ChatRoomProps> = ({ currentUser, socket, targetU
                       </div>
                     ) : (
                       <div className="text-[10px] text-slate-500 truncate">
-                        {u.vip ? 'VIP Officer' : 'Crew'}
+                        {u.role === 'super_admin' ? 'Super Admin' : 'Crew'}
                       </div>
                     )}
                   </div>

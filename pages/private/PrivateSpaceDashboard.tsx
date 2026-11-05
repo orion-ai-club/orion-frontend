@@ -133,8 +133,8 @@ export const PrivateSpaceDashboard: React.FC<PrivateSpaceDashboardProps> = ({ us
   };
 
   // Permission Check for Together Time Widget
-  // Only VIP users or Super Admins can see the special timer. Everyone else sees System Time.
-  const canViewTogetherTime = !!(user?.vip || user?.role === 'super_admin');
+  // Only super_admin users see the special timer. Everyone else sees system time.
+  const canViewTogetherTime = user?.role === 'super_admin';
 
   // Strict Permission Check for current tab content rendering (Double check)
   const hasTabAccess = can(user, TAB_PERMISSIONS[activeTab]);

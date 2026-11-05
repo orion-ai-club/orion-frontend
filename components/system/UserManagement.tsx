@@ -3,7 +3,6 @@ import { useTranslation } from '../../i18n/LanguageContext';
 import { apiService } from '../../services/api';
 import { User, PaginationData, Role, Permission } from '../../types';
 import { toast } from '../Toast';
-import { DeleteModal } from '../DeleteModal';
 
 export const UserManagement: React.FC = () => {
   const { t } = useTranslation();
@@ -22,8 +21,6 @@ export const UserManagement: React.FC = () => {
   const [isUpdatingPerms, setIsUpdatingPerms] = useState(false);
 
   // Modals / Actions
-  const [showVipModal, setShowVipModal] = useState(false);
-  const [isProcessingVip, setIsProcessingVip] = useState(false);
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
 
   const fetchUsers = useCallback(
@@ -110,37 +107,6 @@ export const UserManagement: React.FC = () => {
     return groups;
   }, [allPermissions]);
 
-  const handleVipActionClick = () => {
-    if (!targetUser) return;
-    if (targetUser.role === 'bot') {
-      toast.error(t.system.users.botError);
-      return;
-    }
-    setShowVipModal(true);
-  };
-
-  const handleVipActionConfirm = async (secret?: string) => {
-    if (!targetUser || !secret) return;
-    setIsProcessingVip(true);
-    try {
-      await apiService.verifySecret(secret);
-      if (targetUser.vip) {
-        await apiService.revokeVip(targetUser.email);
-        toast.success(`VIP revoked for ${targetUser.displayName}`);
-      } else {
-        await apiService.grantVip(targetUser.email);
-        toast.success(`VIP granted to ${targetUser.displayName}`);
-      }
-      fetchUsers(page);
-      setTargetUser(null);
-      setShowVipModal(false);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsProcessingVip(false);
-    }
-  };
-
   const handleUpdateRole = async () => {
     if (!targetUser) return;
     if (targetUser.role === 'bot') {
@@ -192,18 +158,6 @@ export const UserManagement: React.FC = () => {
 
   return (
     <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xl flex flex-col xl:flex-row gap-6 animate-fade-in min-h-[600px]">
-      <DeleteModal
-        isOpen={showVipModal}
-        onClose={() => setShowVipModal(false)}
-        onConfirm={handleVipActionConfirm}
-        title={t.system.users.verifyTitle}
-        message={t.system.users.verifyMsg}
-        isSecret={true}
-        confirmKeyword=""
-        buttonText={t.system.users.verifyBtn}
-        zIndexClass="z-[9999]"
-      />
-
       {/* User List Column */}
       <div className="w-full xl:w-3/4 flex flex-col">
         <div className="relative mb-4">
@@ -260,7 +214,7 @@ export const UserManagement: React.FC = () => {
                           {u.role === 'super_admin' ? 'Super' : u.role}
                         </span>
                       )}
-                      {u.vip && (
+                      {u.role === 'super_admin' && (
                         <i
                           className={`fas fa-crown text-xs ${targetUser?._id === u._id ? 'text-yellow-300' : 'text-amber-400'}`}
                         ></i>
@@ -329,26 +283,6 @@ export const UserManagement: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-1">
-              <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-bold uppercase text-slate-400 mb-1">
-                    {t.system.users.vipStatus}
-                  </div>
-                  <div
-                    className={`text-sm font-bold ${targetUser.vip ? 'text-amber-500' : 'text-slate-500'}`}
-                  >
-                    {targetUser.vip ? t.system.users.active : t.system.users.inactive}
-                  </div>
-                </div>
-                <button
-                  onClick={handleVipActionClick}
-                  disabled={isProcessingVip || targetUser.role === 'bot'}
-                  className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all ${targetUser.vip ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-emerald-50 text-emerald-500 hover:bg-emerald-100'} disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  {targetUser.vip ? t.system.users.revoke : t.system.users.grant}
-                </button>
-              </div>
-
               <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
                 <div className="text-xs font-bold uppercase text-slate-400 mb-2">
                   {t.system.users.role}
