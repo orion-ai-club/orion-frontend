@@ -1,6 +1,7 @@
 import { fetchClient, fetchEventStream } from './core';
 import { toast } from '../components/Toast';
 import { uploadImage } from './media';
+import { mutateArticle } from './articleMutations';
 import {
   BlogPost,
   Comment,
@@ -161,27 +162,17 @@ export const contentService = {
   },
 
   createPost: async (postData: any): Promise<void> => {
-    await fetchClient('/posts', {
-      method: 'POST',
-      body: JSON.stringify(postData)
-    });
+    await mutateArticle('POST', '/posts', postData);
     toast.success('Entry successfully logged.');
   },
 
   updatePost: async (id: string, postData: any): Promise<void> => {
-    await fetchClient(`/posts/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(postData)
-    });
+    await mutateArticle('PUT', `/posts/${id}`, postData);
     toast.success('Entry successfully updated.');
   },
 
-  deletePost: async (id: string, secretKey?: string): Promise<void> => {
-    const options: RequestInit = { method: 'DELETE' };
-    if (secretKey) {
-      options.body = JSON.stringify({ secretKey });
-    }
-    await fetchClient(`/posts/${id}`, options);
+  deletePost: async (id: string): Promise<void> => {
+    await mutateArticle('DELETE', `/posts/${id}`);
     toast.success('Log deleted successfully.');
   },
 

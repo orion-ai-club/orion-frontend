@@ -236,10 +236,10 @@ export const JournalSpace: React.FC = () => {
     }
   };
 
-  const confirmDelete = async (secret?: string) => {
+  const confirmDelete = async () => {
     if (!postToDelete) return;
     try {
-      await apiService.deletePost(postToDelete._id, secret);
+      await apiService.deletePost(postToDelete._id);
       setPostToDelete(null);
       if (selectedEntry?._id === postToDelete._id) setSelectedEntry(null);
       if (logSource === 'private') fetchPrivateBlogs();
