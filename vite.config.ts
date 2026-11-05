@@ -92,14 +92,6 @@ export default defineConfig(({ mode }) => {
             if (id.includes('echarts') || id.includes('zrender')) return 'vendor-echarts';
             if (id.includes('recharts')) return 'vendor-recharts';
             if (id.includes('leaflet')) return 'vendor-maps';
-            if (
-              id.includes('socket.io-client') ||
-              id.includes('engine.io-client') ||
-              id.includes('/socket.io-parser/') ||
-              id.includes('/engine.io-parser/')
-            ) {
-              return 'vendor-realtime';
-            }
             if (id.includes('react-router')) return 'vendor-router';
             if (
               id.includes('/react/') ||

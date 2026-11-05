@@ -1,5 +1,4 @@
 import React, { useState, useEffect, Suspense } from 'react';
-import { io, Socket } from 'socket.io-client';
 import { Routes, Route, Navigate, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { Header } from './components/Header';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -7,10 +6,10 @@ import { Hero } from './components/Hero';
 import { MiamiCreed } from './components/MiamiCreed';
 import { CosmicBackground } from './components/CosmicBackground';
 import { ScenicBackground } from './components/ScenicBackground';
-import { ToastContainer, toast } from './components/Toast';
+import { ToastContainer } from './components/Toast';
 import { DeleteModal } from './components/DeleteModal';
 import { apiService } from './services/api';
-import { Theme, PageView, User, BlogPost, ChatUser, PERM_KEYS, can } from './types';
+import { Theme, PageView, User, BlogPost, PERM_KEYS, can } from './types';
 import { useTranslation } from './i18n/LanguageContext';
 import { Helmet } from 'react-helmet-async';
 
@@ -51,9 +50,6 @@ const UserProfile = createLazyComponent(() =>
 const SettingsPage = createLazyComponent(() =>
   import('./pages/SettingsPage').then((module) => ({ default: module.SettingsPage }))
 );
-const ChatRoom = createLazyComponent(() =>
-  import('./pages/ChatRoom').then((module) => ({ default: module.ChatRoom }))
-);
 const AuditLogViewer = createLazyComponent(() =>
   import('./pages/AuditLogViewer').then((module) => ({ default: module.AuditLogViewer }))
 );
@@ -86,8 +82,6 @@ const KnowledgeConsent = createLazyComponent(() =>
   }))
 );
 
-const SOCKET_URL = 'https://api.samyao.me';
-
 declare global {
   interface Window {
     hljs: any;
@@ -97,13 +91,11 @@ declare global {
 // Layout Wrapper Component to handle common elements like Header, Background, Footer
 const Layout: React.FC<{
   user: User | null;
-  socket: Socket | null;
   theme: Theme;
   toggleTheme: () => void;
   onLogin: () => void;
   onLogout: () => void;
-  onNavigateToChat: (user: ChatUser) => void;
-}> = ({ user, socket, theme, toggleTheme, onLogin, onLogout, onNavigateToChat }) => {
+}> = ({ user, theme, toggleTheme, onLogin, onLogout }) => {
   const location = useLocation();
   const isPrivateSpace = location.pathname.startsWith('/captain-cabin');
 
@@ -130,7 +122,6 @@ const Layout: React.FC<{
     if (path.startsWith('/system-management')) return PageView.SYSTEM;
     if (path.startsWith('/system-settings')) return PageView.SETTINGS;
     if (path.startsWith('/footprints')) return PageView.FOOTPRINT;
-    if (path.startsWith('/chatroom')) return PageView.CHAT;
     if (path.startsWith('/captain-cabin')) return PageView.PRIVATE_SPACE;
     return PageView.HOME;
   };
@@ -162,8 +153,6 @@ const Layout: React.FC<{
         currentUser={user}
         onLogin={onLogin}
         onLogout={onLogout}
-        socket={socket}
-        onNavigateToChat={onNavigateToChat}
       />
 
       <main className="relative z-10 pointer-events-none w-full pb-24 md:pb-0">
@@ -232,10 +221,6 @@ const App: React.FC = () => {
   const [publicPostToDelete, setPublicPostToDelete] = useState<BlogPost | null>(null);
 
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [socket, setSocket] = useState<Socket | null>(null);
-
-  // Chat Navigation State
-  const [chatTarget, setChatTarget] = useState<ChatUser | null>(null);
 
   const { t, language, toggleLanguage } = useTranslation();
   const navigate = useNavigate();
@@ -335,37 +320,6 @@ const App: React.FC = () => {
     return () => clearTimeout(emergencyTimer);
   }, []);
 
-  // Socket Connection
-  useEffect(() => {
-    if (!user) {
-      setSocket(null);
-      return;
-    }
-
-    const newSocket = io(SOCKET_URL);
-    newSocket.on('connect', () => {
-      newSocket.emit('USER_CONNECTED', {
-        name: user.displayName,
-        id: user._id,
-        email: user.email,
-        photoURL: user.photoURL
-      });
-    });
-    newSocket.on('NEW_NOTIFICATION', (data: any) => {
-      if (data.type === 'private_message') {
-        toast.info(data.content);
-      }
-      window.dispatchEvent(new CustomEvent('sys_notification', { detail: data }));
-    });
-
-    setSocket(newSocket);
-
-    return () => {
-      newSocket.removeAllListeners();
-      newSocket.disconnect();
-    };
-  }, [user]);
-
   // Handlers
   const handleLoginSuccess = (loggedInUser: User) => {
     setUser(loggedInUser);
@@ -377,11 +331,6 @@ const App: React.FC = () => {
     localStorage.removeItem('googleInfo');
     setIsLoginModalOpen(true);
     navigate('/');
-  };
-
-  const handleNavigateToChat = (targetUser: ChatUser) => {
-    setChatTarget(targetUser);
-    navigate('/chatroom');
   };
 
   const confirmPublicDelete = async () => {
@@ -459,12 +408,10 @@ const App: React.FC = () => {
           element={
             <Layout
               user={user}
-              socket={socket}
               theme={theme}
               toggleTheme={toggleTheme}
               onLogin={() => setIsLoginModalOpen(true)}
               onLogout={handleLogout}
-              onNavigateToChat={handleNavigateToChat}
             />
           }
         >
@@ -501,11 +448,8 @@ const App: React.FC = () => {
                     onNavigate={(page) => {
                       if (page === PageView.BLOG) navigate('/blogs');
                       else if (page === PageView.RESUME) navigate('/profile');
-                      else if (page === PageView.CHAT) navigate('/chatroom');
                       else if (page === PageView.PROFILE) navigate('/user-profile');
                     }}
-                    currentUser={user}
-                    onLoginRequest={() => setIsLoginModalOpen(true)}
                   />
                 </div>
                 <MiamiCreed />
@@ -623,17 +567,6 @@ const App: React.FC = () => {
                   </Suspense>
                 }
                 requiredPerm={PERM_KEYS.FOOTPRINT_USE}
-              />
-            }
-          />
-
-          <Route
-            path="/chatroom"
-            element={
-              <ProtectedRoute
-                isLoading={isAuthChecking}
-                user={user}
-                element={<ChatRoom currentUser={user!} socket={socket} targetUser={chatTarget} />}
               />
             }
           />

@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Theme, PageView, User, AuditLog, ChatUser, PERM_KEYS, can, Language } from '../types';
+import { Link, useLocation } from 'react-router-dom';
+import { Theme, PageView, User, AuditLog, PERM_KEYS, can, Language } from '../types';
 import { useTranslation } from '../i18n/LanguageContext';
-import { Socket } from 'socket.io-client';
-import { toast } from './Toast';
 import { API_BASE_URL } from '../services/core';
 
 interface HeaderProps {
@@ -14,8 +12,6 @@ interface HeaderProps {
   currentUser: User | null;
   onLogin: () => void;
   onLogout: () => void;
-  socket: Socket | null;
-  onNavigateToChat?: (user: ChatUser) => void;
 }
 
 // Using flagcdn for stable, high-quality flag assets
@@ -38,11 +34,8 @@ export const Header: React.FC<HeaderProps> = ({
   currentPage,
   currentUser,
   onLogin,
-  onLogout,
-  socket,
-  onNavigateToChat
+  onLogout
 }) => {
-  const navigate = useNavigate();
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -57,68 +50,11 @@ export const Header: React.FC<HeaderProps> = ({
 
   const { t, language, setLanguage } = useTranslation();
 
-  // Socket Listener for Notifications & Logs
-  useEffect(() => {
-    // Listen for VIP Operation Logs via Socket directly (Admin feature)
-    const handleLog = (data: { message: string; log: AuditLog }) => {
-      if (can(currentUser, PERM_KEYS.SYSTEM_LOGS)) {
-        setNotifications((prev) => [
-          {
-            type: 'audit',
-            message: data.message,
-            timestamp: new Date(),
-            payload: data
-          },
-          ...prev
-        ]);
-        setUnreadCount((prev) => prev + 1);
-      }
-    };
-
-    // Listen for General Notifications (System events)
-    const handleNotification = (data: any) => {
-      setNotifications((prev) => {
-        const exists = prev.some(
-          (n) =>
-            n.message === data.content &&
-            new Date().getTime() - new Date(n.timestamp).getTime() < 2000
-        );
-        if (exists) return prev;
-
-        return [
-          {
-            type: data.type || 'info',
-            message: data.content,
-            timestamp: new Date(),
-            payload: data
-          },
-          ...prev
-        ];
-      });
-      setUnreadCount((prev) => prev + 1);
-    };
-
-    const handleSysNotification = (e: CustomEvent) => {
-      handleNotification(e.detail);
-    };
-
-    if (socket) {
-      socket.on('NEW_OPERATION_LOG', handleLog);
-    }
-
-    window.addEventListener('sys_notification' as any, handleSysNotification);
-
-    return () => {
-      if (socket) {
-        socket.off('NEW_OPERATION_LOG', handleLog);
-      }
-      window.removeEventListener('sys_notification' as any, handleSysNotification);
-    };
-  }, [socket, currentUser]);
+  // Notification UX remains driven by the authenticated Worker audit feed.
+  // The human-chat Socket.IO connection is intentionally removed.
 
   // Worker CRUD records are persisted in MongoDB and polled by ObjectId cursor.
-  // The old Socket.IO listener above stays connected for legacy Cloud Run
-  // notifications and chat, but Worker events never depend on Cloud Run.
+  // Worker events do not require a persistent socket connection.
   useEffect(() => {
     if (!can(currentUser, PERM_KEYS.SYSTEM_LOGS)) return;
 
@@ -225,31 +161,6 @@ export const Header: React.FC<HeaderProps> = ({
     setIsNotifOpen(false);
   };
 
-  const handleNotificationClick = (n: any) => {
-    if (n.type === 'private_message' && onNavigateToChat && n.payload) {
-      const payload = n.payload;
-      const fromUser = payload.fromUser || payload.user || {};
-      const targetId =
-        fromUser.id || fromUser._id || payload.fromUserId || payload.userId || payload.senderId;
-      const targetName =
-        fromUser.displayName || fromUser.name || payload.senderName || payload.author;
-      const targetEmail = fromUser.email || payload.senderEmail || payload.email;
-
-      if (targetId && targetName) {
-        onNavigateToChat({
-          id: targetId,
-          name: targetName,
-          email: targetEmail
-        });
-        setIsNotifOpen(false);
-        return;
-      } else {
-        console.warn('Could not extract sender info from notification:', n);
-        toast.error('Unable to open chat: Missing sender information.');
-      }
-    }
-  };
-
   const canAccessPrivateSpace = can(currentUser, PERM_KEYS.PRIVATE_ACCESS);
 
   const navLinks = [
@@ -267,7 +178,6 @@ export const Header: React.FC<HeaderProps> = ({
         code: '04'
       });
     }
-    navLinks.push({ label: t.header.chat, value: PageView.CHAT, path: '/chatroom', code: '05' });
   }
 
   if (canAccessPrivateSpace) {
@@ -596,7 +506,7 @@ export const Header: React.FC<HeaderProps> = ({
                         notifications.map((n, idx) => (
                           <div
                             key={idx}
-                            onClick={() => handleNotificationClick(n)}
+                            onClick={() => setIsNotifOpen(false)}
                             className={`p-3 border-b text-xs last:border-0 cursor-pointer transition-colors ${
                               isPrivate
                                 ? 'border-rose-50 hover:bg-rose-50'

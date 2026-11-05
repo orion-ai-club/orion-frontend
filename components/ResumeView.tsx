@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useTranslation } from '../i18n/LanguageContext';
-import { PageView, User } from '../types';
+import { PageView } from '../types';
 import { createPortal } from 'react-dom';
 import { LikeButton } from './LikeButton';
 import { LinkedInBadge } from './LinkedInBadge';
@@ -73,25 +73,11 @@ const StarCompass = () => {
 
 interface ResumeViewProps {
   onNavigate: (page: PageView) => void;
-  currentUser: User | null;
-  onLoginRequest: () => void;
 }
 
-export const ResumeView: React.FC<ResumeViewProps> = ({
-  onNavigate,
-  currentUser,
-  onLoginRequest
-}) => {
+export const ResumeView: React.FC<ResumeViewProps> = ({ onNavigate }) => {
   const { t } = useTranslation();
   const [showSpecs, setShowSpecs] = useState(false);
-
-  const handleChatClick = () => {
-    if (currentUser) {
-      onNavigate(PageView.CHAT);
-    } else {
-      onLoginRequest();
-    }
-  };
 
   const sections = t.resume.websiteIntro.sections as any;
   const aboutCards = [
@@ -288,9 +274,9 @@ export const ResumeView: React.FC<ResumeViewProps> = ({
             </div>
           </div>
 
-          {/* CARD 3: CHAT */}
+          {/* CARD 3: PROJECTS (replaces retired human chat) */}
           <div
-            onClick={handleChatClick}
+            onClick={() => onNavigate(PageView.RESUME)}
             className="group relative flex flex-col justify-between bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-[2.5rem] p-8 border border-slate-200/50 dark:border-slate-800/80 shadow-md hover:shadow-2xl hover:shadow-primary-500/10 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 cursor-pointer overflow-hidden"
           >
             {/* Top gradient highlight bar */}
@@ -301,19 +287,19 @@ export const ResumeView: React.FC<ResumeViewProps> = ({
 
             <div className="relative z-10">
               <div className="w-12 h-12 rounded-2xl bg-primary-500/10 text-primary-600 dark:text-primary-400 flex items-center justify-center text-lg mb-6 group-hover:scale-110 transition-transform duration-500">
-                <i className="fas fa-comments"></i>
+                <i className="fas fa-code-branch"></i>
               </div>
               <h3 className="text-xl font-bold font-serif text-slate-800 dark:text-white mb-3 tracking-tight group-hover:text-primary-500 dark:group-hover:text-primary-400 transition-colors duration-300">
-                {t.resume.siteIntro.chatTitle}
+                Projects & Engineering
               </h3>
               <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed font-light mb-8">
-                {t.resume.siteIntro.chatDesc}
+                Explore the systems, tools and products I build.
               </p>
             </div>
 
             <div className="relative z-10">
               <span className="inline-flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-full border border-slate-200/60 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 text-slate-600 dark:text-slate-300 group-hover:bg-primary-500 group-hover:text-white group-hover:border-transparent transition-all duration-300">
-                <span>Initialize Link</span>{' '}
+                <span>Explore Projects</span>{' '}
                 <i className="fas fa-arrow-right transition-transform group-hover:translate-x-1 duration-300"></i>
               </span>
             </div>
