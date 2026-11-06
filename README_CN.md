@@ -91,7 +91,7 @@ flowchart TD
 32 个 R2 分片均通过 SHA-256，隔离恢复了 36 个集合、1,271 条记录，
 核对 65 个次级索引。旧 Cloud Run 暂时保留用于其他未迁移功能。
 
-**最终目标（未上线）：** Cloudflare Pages + Gateway + Core Workers /
+**最终后端目标（未上线）：** 保留 Vercel 前端 + Gateway + Core Workers /
 Durable Objects + 现有 MongoDB + R2 + 原生 Cron；保留登录、OAuth、
 Second Brain MCP 和 AI，移除 Cloud Run/容器。未完成认证、MCP、个人
 CRUD、上传、AI、定时任务的端到端迁移前，不能安全关闭旧服务。
@@ -123,3 +123,5 @@ React 19 · TypeScript · Vite · Tailwind CSS · Tiptap · KaTeX · Firebase ·
 前端使用 [new-bananaboom-api-2025](https://github.com/yaohuangguan/new-bananaboom-api-2025) 提供鉴权、权限、内容、上传、实时事件和个人数据 API。
 
 欢迎提交 issue 或 pull request。提交前请运行完整检查，不要加入私人日志、账户导出数据或真实凭据。
+
+**范围确认（2026-11-07）：** samyao.me 前端继续留在 Vercel，保留原有 CDN、构建和 PWA。只将 Cloud Run 的必要后端能力迁至 Cloudflare Workers；原来用户自己编写的 Express 代码目录即使不再运行，也全部保留，不作删除。
