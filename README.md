@@ -119,7 +119,7 @@ Independent read-only verification checked 32/32 R2 SHA-256 parts and restored
 1,271 documents into 36 collections with 65 secondary indexes in an
 isolated MongoDB Replica Set. Cloud Run remains online for other routes.
 
-**Target (not live):** Cloudflare Pages for frontend + Cloudflare API Gateway +
+**Target backend (not live):** retain the Vercel frontend + Cloudflare API Gateway +
 Core Workers / Durable Objects + existing MongoDB + R2 + native Cron,
 preserving Google/Firebase identity, Second Brain MCP and retained AI features.
 No Cloud Run or container. OAuth, sessions, private CRUD, media uploads, AI,
@@ -289,3 +289,5 @@ pnpm build
 ```
 
 Never include private journal content, exported account data, or real credentials in commits, issues, screenshots, or pull requests.
+
+**Owner decision (2026-11-07):** Keep samyao.me on Vercel and its CDN permanently unless explicitly revisited; only migrate backend Cloud Run operations to Cloudflare Workers. Preserve all owner-written historical Express source directories after runtime retirement.
