@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { User, PaginationData, PERM_KEYS, Permission, Role, can } from '../types';
 import { useTranslation } from '../i18n/LanguageContext';
 import { apiService } from '../services/api';
+import { API_BASE_URL } from '../services/core';
 import { toast } from '../components/Toast';
 import { DeleteModal } from '../components/DeleteModal';
 import { BackupTerminalModal } from '../components/BackupTerminalModal';
@@ -56,6 +57,58 @@ export const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) 
 
   // Backup Terminal Modal State
   const [showBackupModal, setShowBackupModal] = useState(false);
+  const [backupMode, setBackupMode] = useState<'legacy' | 'r2-canary'>('legacy');
+  const [isVerifyingProfile, setIsVerifyingProfile] = useState(false);
+  const [profileCanaryResult, setProfileCanaryResult] = useState<string | null>(null);
+
+  const verifyWorkerProfile = async () => {
+    if (isVerifyingProfile) return;
+    setIsVerifyingProfile(true);
+    setProfileCanaryResult(null);
+    try {
+      // Keep both responses in the current browser. Do not log or transmit
+      // the session token, Bark URL, or private user profile fields.
+      const path = API_BASE_URL + '/users/profile';
+      const [legacy, candidate] = await Promise.all([
+        fetch(path, { credentials: 'include', cache: 'no-store' }),
+        fetch(path, {
+          credentials: 'include',
+          cache: 'no-store',
+          headers: { 'x-orion-profile-canary': '1' }
+        })
+      ]);
+      if (
+        !legacy.ok ||
+        !candidate.ok ||
+        candidate.headers.get('x-bananaboom-origin') !== 'worker'
+      ) {
+        setProfileCanaryResult(
+          'Not verified: old API HTTP ' +
+            legacy.status +
+            ', Worker HTTP ' +
+            candidate.status +
+            '. Existing login is unchanged.'
+        );
+        return;
+      }
+      const [a, b] = await Promise.all([legacy.json(), candidate.json()]);
+      const fieldsMatch = ['_id', 'role', 'displayName', 'email', 'timezone'].every(
+        (key) => String(a[key] ?? '') === String(b[key] ?? '')
+      );
+      const permissionsMatch =
+        JSON.stringify([...(a.permissions || [])].sort()) ===
+        JSON.stringify([...(b.permissions || [])].sort());
+      setProfileCanaryResult(
+        fieldsMatch && permissionsMatch
+          ? 'PASS: identity, role, timezone and permissions match Cloud Run.'
+          : 'MISMATCH: profile migration remains disabled. No data changed.'
+      );
+    } catch {
+      setProfileCanaryResult('Network or authentication error. No migration was performed.');
+    } finally {
+      setIsVerifyingProfile(false);
+    }
+  };
 
   // Permission Request State
   const [isPermModalOpen, setIsPermModalOpen] = useState(false);
@@ -329,7 +382,11 @@ export const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) 
   return (
     <div className="container mx-auto px-6 py-24 pt-32 max-w-4xl animate-fade-in relative z-10">
       {/* Backup Terminal Modal */}
-      <BackupTerminalModal isOpen={showBackupModal} onClose={() => setShowBackupModal(false)} />
+      <BackupTerminalModal
+        isOpen={showBackupModal}
+        onClose={() => setShowBackupModal(false)}
+        mode={backupMode}
+      />
 
       <div className="mb-8 border-b border-slate-200 dark:border-slate-800 pb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
@@ -685,12 +742,56 @@ export const UserProfile: React.FC<UserProfileProps> = ({ user, onUpdateUser }) 
 
                 {/* New One-Click Cloud Backup Button */}
                 <button
-                  onClick={() => setShowBackupModal(true)}
+                  onClick={() => {
+                    setBackupMode('legacy');
+                    setShowBackupModal(true);
+                  }}
                   className="w-full py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-bold uppercase tracking-widest hover:from-orange-600 hover:to-amber-600 transition-all shadow-lg shadow-orange-500/20 flex items-center justify-center gap-2"
                 >
                   <i className="fas fa-cloud-upload-alt"></i>
                   Backup to Cloud (R2)
                 </button>
+
+                <div className="rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/25 p-4 space-y-3">
+                  <div className="text-base font-semibold text-blue-900 dark:text-blue-200">
+                    Worker migration verification
+                  </div>
+                  <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+                    Optional tests for the new private R2 snapshot and signed-in profile. The
+                    existing Cloud Run backup remains available.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBackupMode('r2-canary');
+                      setShowBackupModal(true);
+                    }}
+                    className="w-full py-3 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                  >
+                    <i className="fas fa-shield-alt"></i>
+                    Test private R2 backup (Worker)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void verifyWorkerProfile();
+                    }}
+                    disabled={isVerifyingProfile}
+                    className="w-full py-3 px-4 rounded-lg border border-blue-300 dark:border-blue-700 text-blue-900 dark:text-blue-200 hover:bg-blue-100/60 dark:hover:bg-blue-900/40 text-sm font-semibold disabled:opacity-60 transition-colors"
+                  >
+                    {isVerifyingProfile
+                      ? 'Comparing profile...'
+                      : 'Verify Worker profile (read-only)'}
+                  </button>
+                  {profileCanaryResult && (
+                    <p
+                      role="status"
+                      className="text-sm leading-6 text-slate-700 dark:text-slate-200"
+                    >
+                      {profileCanaryResult}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           )}

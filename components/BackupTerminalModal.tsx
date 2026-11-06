@@ -7,9 +7,14 @@ import { useTranslation } from '../i18n/LanguageContext';
 interface BackupTerminalModalProps {
   isOpen: boolean;
   onClose: () => void;
+  mode?: 'legacy' | 'r2-canary';
 }
 
-export const BackupTerminalModal: React.FC<BackupTerminalModalProps> = ({ isOpen, onClose }) => {
+export const BackupTerminalModal: React.FC<BackupTerminalModalProps> = ({
+  isOpen,
+  onClose,
+  mode = 'legacy'
+}) => {
   const { t } = useTranslation();
   const [logs, setLogs] = useState<string[]>([]);
   const [isDone, setIsDone] = useState(false);
@@ -20,10 +25,17 @@ export const BackupTerminalModal: React.FC<BackupTerminalModalProps> = ({ isOpen
 
   const startBackup = useCallback(async () => {
     hasStartedRef.current = true;
-    setLogs([t.system.backup.init, t.system.backup.reqDump]);
+    setLogs(
+      mode === 'r2-canary'
+        ? [
+            '[INFO] Private R2 snapshot canary (Worker)',
+            '[INFO] Existing Cloud Run backup remains unchanged.'
+          ]
+        : [t.system.backup.init, t.system.backup.reqDump]
+    );
 
     try {
-      const response = await featureService.getBackupStream();
+      const response = await featureService.getBackupStream(mode === 'r2-canary');
 
       if (!response.ok) {
         throw new Error(`Connection Failed: ${response.status}`);
@@ -59,6 +71,7 @@ export const BackupTerminalModal: React.FC<BackupTerminalModalProps> = ({ isOpen
       ]);
     }
   }, [
+    mode,
     t.system.backup.init,
     t.system.backup.reqDump,
     t.system.backup.success,
@@ -105,7 +118,11 @@ export const BackupTerminalModal: React.FC<BackupTerminalModalProps> = ({ isOpen
             <div
               className={`w-3 h-3 rounded-full ${isError ? 'bg-red-500' : isDone ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`}
             ></div>
-            <span className="font-bold text-slate-300">{t.system.backup.terminalTitle}</span>
+            <span className="font-bold text-slate-300">
+              {mode === 'r2-canary'
+                ? 'Private R2 Backup Verification'
+                : t.system.backup.terminalTitle}
+            </span>
           </div>
           {!isDone && !isError && (
             <span className="text-xs text-slate-500 animate-pulse">
@@ -140,12 +157,18 @@ export const BackupTerminalModal: React.FC<BackupTerminalModalProps> = ({ isOpen
               >
                 {t.system.common.cancel}
               </button>
-              <button
-                onClick={handleGoToFiles}
-                className="px-6 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-lg shadow-emerald-900/20 flex items-center gap-2"
-              >
-                <i className="fas fa-folder-open"></i> {t.system.backup.viewFiles}
-              </button>
+              {mode === 'legacy' ? (
+                <button
+                  onClick={handleGoToFiles}
+                  className="px-6 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition-all shadow-lg shadow-emerald-900/20 flex items-center gap-2"
+                >
+                  <i className="fas fa-folder-open"></i> {t.system.backup.viewFiles}
+                </button>
+              ) : (
+                <span className="self-center text-sm text-slate-400">
+                  Saved in the private R2 bucket, not the public media browser.
+                </span>
+              )}
             </>
           ) : isError ? (
             <button

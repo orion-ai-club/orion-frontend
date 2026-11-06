@@ -617,12 +617,14 @@ export const featureService = {
   },
 
   // NEW: Get Backup Stream (Returns raw Response)
-  getBackupStream: async (): Promise<Response> => {
+  getBackupStream: async (useWorkerR2 = false): Promise<Response> => {
     const response = await fetch(`${API_BASE_URL}/backup/database`, {
       method: 'POST',
       credentials: 'include',
+      cache: 'no-store',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...(useWorkerR2 ? { 'x-orion-backup-canary': '1' } : {})
       }
     });
     return response;
