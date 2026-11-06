@@ -67,17 +67,36 @@ pnpm build
 
 浏览器测试覆盖公式粘贴、代码保真、图片上传与失败恢复、手写撤销/重做及序列化、字体样式、表情和 GIF、视频往返、草稿隔离、旧内容兼容、手机横向溢出和 Orion 两套主题。
 
-## 技术结构
+## 技术结构（截至 2026-11-07）
+
+**当前是混合部署，不是 Cloudflare-only。** 前端 React 19 + Vite PWA 仍在
+**Vercel**，通过 `api.samyao.me` 进入 Cloudflare Gateway；已迁移请求通过
+Service Binding 到 Core Worker 和 MongoDB Durable Object。登录/OAuth、
+Second Brain MCP、部分个人数据写入、媒体上传和 AI 仍需要 Cloud Run。
 
 ```mermaid
-flowchart LR
-  Browser[React 19 + Vite PWA] --> API[Orion API]
-  Browser --> Firebase[Firebase 登录]
-  API --> Mongo[(MongoDB)]
-  API --> R2[(Cloudflare R2)]
-  API --> Realtime[Socket.IO]
-  API --> AI[AI 服务商]
+flowchart TD
+  B["Browser / PWA"] --> F["Vercel · samyao.me"]
+  B --> ID["Firebase / Google"]
+  B --> G["Cloudflare API Gateway · api.samyao.me"]
+  G -->|"已迁移"| C["Core Worker / Durable Object"]
+  G -->|"未迁移"| L["Cloud Run · Express"]
+  C --> M[("MongoDB")]
+  L --> M
+  C --> R[("私有 R2 数据库备份")]
+  L --> A[("R2 媒体及外部集成")]
 ```
+
+**R2 全量备份已经正式迁移：** 2026-11-07 从普通后台按钮触发成功，
+32 个 R2 分片均通过 SHA-256，隔离恢复了 36 个集合、1,271 条记录，
+核对 65 个次级索引。旧 Cloud Run 暂时保留用于其他未迁移功能。
+
+**最终目标（未上线）：** Cloudflare Pages + Gateway + Core Workers /
+Durable Objects + 现有 MongoDB + R2 + 原生 Cron；保留登录、OAuth、
+Second Brain MCP 和 AI，移除 Cloud Run/容器。未完成认证、MCP、个人
+CRUD、上传、AI、定时任务的端到端迁移前，不能安全关闭旧服务。
+
+[完整架构和退役门槛](https://github.com/yaohuangguan/new-bananaboom-api-2025/blob/master/docs/ARCHITECTURE.md)。
 
 ```text
 components/             通用 UI、Journal 编辑/阅读、Profile 与私密组件
