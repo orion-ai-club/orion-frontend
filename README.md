@@ -20,7 +20,7 @@ A bilingual digital garden, engineering portfolio, and personal operating system
 - **Apps-first portfolio** — projects are treated as live products with demos, source links, categories, and bilingual presentation.
 - **Private Captain's Cabin** — authenticated workspaces for notes, tasks, health, travel, personal data, utilities, and account-aware workflows.
 - **AI where it is useful** — streaming assistants and project-import workflows augment existing product flows instead of becoming the product itself.
-- **Built for production** — Cloudflare edge controls, a protected Cloud Run origin, PWA support, structured SEO, and explicit deployment boundaries.
+- **Production migration in progress** — Vercel PWA plus Cloudflare Gateway / Core Worker, with protected Cloud Run still required for legacy routes.
 
 ## Product surface
 
@@ -89,47 +89,46 @@ flowchart LR
     E --> H["Create · Manage · Use AI-assisted workflows"]
 ```
 
-## Architecture
+## Architecture — production as of 2026-11-07
 
-Production separates the public frontend from the protected API origin.
-
-The browser does not need the Cloud Run hostname. Production API and realtime traffic use `https://api.samyao.me`.
+**Orion is hybrid, not yet Cloudflare-only.** The React/Vite frontend runs on
+**Vercel**. Production requests use `api.samyao.me` (Cloudflare Worker Gateway).
+Already migrated routes reach the private Core Worker by Service Binding;
+auth, Second Brain MCP, personal CRUD and other retained routes still depend
+on Cloud Run.
 
 ```mermaid
 flowchart TD
-    Browser["Browser / PWA"]
-    Frontend["Orion Frontend<br/>samyao.me"]
-    Firebase["Firebase Authentication"]
-    Edge["Cloudflare API Gateway<br/>api.samyao.me"]
-    API["Google Cloud Run<br/>Orion API"]
-    Mongo["MongoDB"]
-    R2["Cloudflare R2"]
-    Realtime["Socket.IO"]
-    AIGateway["Cloudflare AI Gateway Worker"]
-    WorkersAI["Cloudflare Workers AI"]
-
-    Browser --> Frontend
-    Browser --> Firebase
-    Browser --> Edge
-    Edge -->|"rate limit · CORS · TLS · security headers"| API
-    API --> Mongo
-    API --> R2
-    API --> Realtime
-    API --> AIGateway
-    AIGateway --> WorkersAI
+    Browser["Browser / PWA"] --> Front["Vercel · samyao.me"]
+    Browser --> Firebase["Firebase / Google sign-in"]
+    Browser --> Gateway["Cloudflare API Gateway · api.samyao.me"]
+    Gateway -->|"Migrated endpoints"| Core["Core Worker / MongoDB Durable Object"]
+    Gateway -->|"Unmigrated endpoints"| Legacy["Cloud Run / Express 5"]
+    Core --> Mongo[("Existing MongoDB")]
+    Legacy --> Mongo
+    Core --> R2[("Private R2 database backup")]
+    Legacy --> Media[("R2 media and integrations")]
 ```
 
-### Production API edge
+The Gateway enforces explicit route allowlists, security headers, rate limits,
+auth-carrier forwarding and per-feature cutover flags. **A Core implementation
+or passing canary does not mean global routing has changed.**
 
-`api.samyao.me` is a Cloudflare Worker custom domain in front of Cloud Run.
+On 2026-11-07 normal `POST /api/backup/database` was cut over to private R2.
+Independent read-only verification checked 32/32 R2 SHA-256 parts and restored
+1,271 documents into 36 collections with 65 secondary indexes in an
+isolated MongoDB Replica Set. Cloud Run remains online for other routes.
 
-- Cloudflare terminates TLS, applies per-IP rate limits, handles CORS preflight, and adds security headers before requests reach the application.
-- The Worker injects a private `x-orion-edge-secret`; Cloud Run rejects direct `/api/*` requests that do not carry the matching server-side secret.
-- The public `run.app` hostname therefore cannot execute normal API business logic directly.
-- Cloud Run uses bounded scaling as an additional cost and surge guardrail.
-- Mutable portfolio, journal, and homepage API responses use `Cache-Control: no-store` so successful writes become visible immediately.
-- Edge caching is reserved for data with an explicit staleness contract.
-- Authenticated and BYOK secrets stay out of URLs and browser persistence. Optional AI credentials are session-only and forwarded only for the current request.
+**Target (not live):** Cloudflare Pages for frontend + Cloudflare API Gateway +
+Core Workers / Durable Objects + existing MongoDB + R2 + native Cron,
+preserving Google/Firebase identity, Second Brain MCP and retained AI features.
+No Cloud Run or container. OAuth, sessions, private CRUD, media uploads, AI,
+scheduled tasks and production fallback traffic must be migrated and verified
+before a reversible Cloud Run shutdown.
+
+Authoritative architecture and cutover gates:
+[Backend technical architecture](https://github.com/yaohuangguan/new-bananaboom-api-2025/blob/master/docs/ARCHITECTURE.md).
+Production routing source is the backend Gateway `wrangler.toml` and `src/index.js`.
 
 ## GitHub → Apps import
 
@@ -255,7 +254,7 @@ The browser regression suite covers:
 - Unsafe links and untrusted video embeds are rejected.
 - Media upload state prevents premature publishing.
 - Durable remote media URLs are stored instead of local blob URLs.
-- Production API traffic is routed through the Cloudflare gateway before reaching Cloud Run.
+- Production API traffic passes through the Gateway to either a migrated Core Worker route or the still-needed Cloud Run origin.
 - The application contains personal modules; separate deployments should use their own environment, database, storage, and identity configuration.
 
 ## Deployment model
@@ -265,7 +264,8 @@ flowchart LR
     GitHub["GitHub"] --> FrontendDeploy["Frontend deployment"]
     FrontendDeploy --> Site["samyao.me"]
     Site --> Edge["api.samyao.me"]
-    Edge --> CloudRun["Cloud Run API"]
+    Edge --> Core["Core Worker"]
+    Edge --> CloudRun["Legacy Cloud Run API"]
     CloudRun --> Data["MongoDB · R2"]
 ```
 
