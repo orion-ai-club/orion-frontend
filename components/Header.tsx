@@ -3,6 +3,9 @@ import { Link, useLocation } from 'react-router-dom';
 import { Theme, PageView, User, AuditLog, PERM_KEYS, can, Language } from '../types';
 import { useTranslation } from '../i18n/LanguageContext';
 import { API_BASE_URL } from '../services/core';
+import { Menu, X } from 'lucide-react';
+import { OrionDockNav } from './OrionDockNav';
+import { OrionMobileNav } from './OrionMobileNav';
 
 interface HeaderProps {
   theme: Theme;
@@ -38,6 +41,8 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
 
   // Notification States
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -155,6 +160,27 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, [isLangMenuOpen]);
 
+  // Close the mobile dock on navigation, Escape, or an outside click.
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isMobileOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsMobileOpen(false);
+    };
+    const closeOutside = (event: PointerEvent) => {
+      if (!headerRef.current?.contains(event.target as Node)) setIsMobileOpen(false);
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    document.addEventListener('pointerdown', closeOutside);
+    return () => {
+      document.removeEventListener('keydown', closeOnEscape);
+      document.removeEventListener('pointerdown', closeOutside);
+    };
+  }, [isMobileOpen]);
+
   const handleClearNotifications = () => {
     setNotifications([]);
     setUnreadCount(0);
@@ -191,22 +217,15 @@ export const Header: React.FC<HeaderProps> = ({
 
   const isPrivate = location.pathname.startsWith('/captain-cabin');
 
-  let headerClasses = `fixed w-full top-0 z-[2000] transition-all duration-500 `;
-  if (isPrivate) {
-    headerClasses +=
-      'bg-white/90 border-b border-rose-200 backdrop-blur-md py-3 shadow-sm shadow-rose-100/50';
-  } else {
-    headerClasses += isScrolled
-      ? 'bg-[#fdfbf7]/80 dark:bg-[#02040a]/90 backdrop-blur-md border-b border-slate-200/50 dark:border-white/5 py-3 shadow-sm'
-      : 'bg-transparent py-6';
-  }
-
-  const currentLangConfig = LANGUAGES.find((l) => l.code === language);
-
+  // Keep the cabin theme intact; the public pages use a floating glass dock.
+  const headerClasses = isPrivate
+    ? 'fixed w-full top-0 z-[2000] bg-white/90 border-b border-rose-200 backdrop-blur-md py-3 shadow-sm shadow-rose-100/50'
+    : 'orion-dock-header fixed w-full z-[2000]' + (isScrolled ? ' is-scrolled' : '');
   return (
-    <header className={headerClasses}>
+    <header ref={headerRef} className={headerClasses}>
       {/* Removed max-w-[1600px] to occupy full screen width as requested */}
-      <div className="w-full px-6 md:px-12 mx-auto flex justify-between items-center relative">
+      <div className={isPrivate ? "w-full px-6 md:px-12 mx-auto flex justify-between items-center relative" : "orion-dock-shell"}>
+        {/* The original routes, auth and utility controls remain connected. */}
         {/* Logo - Redesigned to be native CSS composition */}
         <Link to="/" className="flex items-center gap-3 cursor-pointer group z-20 relative mr-auto">
           <div className="relative w-10 h-10 flex items-center justify-center">
@@ -257,77 +276,9 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </Link>
 
-        {/* Desktop Nav - Hidden on Mobile */}
-        <nav className="hidden xl:flex items-center justify-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-          <div
-            className={`flex items-center gap-1 px-2 py-1.5 rounded-full border backdrop-blur-md transition-colors duration-500 ${isPrivate ? 'bg-white/50 border-rose-200' : 'bg-white/70 dark:bg-white/5 border-slate-200 dark:border-white/10 shadow-lg shadow-black/5'}`}
-          >
-            {navLinks.map((link) => {
-              const isActive = currentPage === link.value;
-
-              if (link.value === PageView.PRIVATE_SPACE) {
-                return (
-                  <Link
-                    key={link.value}
-                    to={link.path}
-                    className={`relative px-5 py-2 rounded-full transition-all duration-300 group ${
-                      isActive
-                        ? 'bg-gradient-to-r from-rose-400 to-pink-500 text-white font-bold shadow-lg shadow-rose-400/30 transform scale-105'
-                        : 'text-rose-400 hover:text-rose-600 hover:bg-rose-50'
-                    }`}
-                  >
-                    <span className="text-[10px] font-bold tracking-widest uppercase flex items-center gap-2">
-                      <i className="fas fa-heart text-[8px]"></i> {link.label}
-                    </span>
-                  </Link>
-                );
-              }
-
-              return (
-                <Link
-                  key={link.value}
-                  to={link.path}
-                  className={`relative px-4 py-2 group rounded-full transition-all duration-300 overflow-hidden flex flex-col items-center justify-center min-w-[100px] ${
-                    isActive
-                      ? 'bg-primary-500/10 dark:bg-primary-900/20'
-                      : 'hover:bg-slate-100 dark:hover:bg-white/5'
-                  }`}
-                >
-                  {isActive && (
-                    <>
-                      <span className="absolute left-0 top-1/2 -translate-y-1/2 h-3 w-[2px] bg-primary-500 dark:bg-primary-400 rounded-r-sm"></span>
-                      <span className="absolute right-0 top-1/2 -translate-y-1/2 h-3 w-[2px] bg-primary-500 dark:bg-primary-400 rounded-l-sm"></span>
-                    </>
-                  )}
-
-                  <div className="flex items-baseline gap-2 relative z-10">
-                    <span
-                      className={`text-[9px] font-mono transition-colors ${isActive ? 'text-primary-600 dark:text-primary-400' : 'text-slate-500 dark:text-slate-500'}`}
-                    >
-                      {link.code}
-                    </span>
-                    <span
-                      className={`text-xs font-bold font-mono tracking-widest uppercase transition-colors ${
-                        isActive
-                          ? 'text-slate-900 dark:text-primary-100'
-                          : 'text-slate-700 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white'
-                      }`}
-                    >
-                      {link.label}
-                    </span>
-                  </div>
-
-                  <span
-                    className={`absolute bottom-0.5 w-1 h-1 rounded-full bg-primary-500 dark:bg-primary-400 transition-all duration-300 ${isActive ? 'opacity-100 scale-100' : 'opacity-0 scale-0 group-hover:opacity-50 group-hover:scale-75'}`}
-                  ></span>
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
-
+        <OrionDockNav links={navLinks} currentPage={currentPage} isPrivate={isPrivate} />
         {/* Actions */}
-        <div className="flex items-center gap-4 relative z-50">
+        <div className="orion-dock-actions flex items-center gap-1.5 sm:gap-2 relative z-50">
           <button
             onClick={toggleTheme}
             className={`w-9 h-9 flex items-center justify-center rounded-full transition-all duration-300 ${
@@ -350,7 +301,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Redesigned Language Switcher Pill */}
           <div
             className={`
-              flex items-center p-0.5 rounded-full border shadow-sm transition-all duration-300 relative
+              hidden sm:flex items-center p-0.5 rounded-full border shadow-sm transition-all duration-300 relative orion-dock-language
               ${
                 isPrivate
                   ? 'bg-white/80 border-rose-200 text-rose-600'
@@ -644,14 +595,44 @@ export const Header: React.FC<HeaderProps> = ({
           ) : (
             <button
               onClick={onLogin}
-              className="hidden xl:flex items-center justify-center gap-2 px-6 py-2 rounded-full border border-primary-500/30 bg-primary-500/10 text-primary-600 dark:text-primary-400 text-xs font-bold uppercase tracking-widest hover:bg-primary-500 hover:text-white transition-all duration-300 hover:shadow-[0_0_20px_rgba(14,165,233,0.4)] min-w-[110px]"
+              className="orion-dock-login hidden xl:flex items-center justify-center gap-2 px-6 py-2 rounded-full border border-primary-500/30 bg-primary-500/10 text-primary-600 dark:text-primary-400 text-xs font-bold uppercase tracking-widest hover:bg-primary-500 hover:text-white transition-all duration-300 hover:shadow-[0_0_20px_rgba(14,165,233,0.4)] min-w-[110px]"
             >
               <i className="fas fa-terminal text-[10px]"></i>
               {t.header.signIn}
             </button>
           )}
+          <button
+            type="button"
+            className="orion-dock-menu-toggle xl:hidden"
+            aria-label={isMobileOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={isMobileOpen}
+            aria-controls="orion-mobile-dock"
+            onClick={() => setIsMobileOpen((open) => !open)}
+          >
+            {isMobileOpen ? <X size={21} strokeWidth={1.9} /> : <Menu size={21} strokeWidth={1.9} />}
+          </button>
         </div>
       </div>
+      <OrionMobileNav
+        open={isMobileOpen}
+        links={navLinks}
+        currentPage={currentPage}
+        currentUser={currentUser}
+        language={language}
+        languages={LANGUAGES}
+        onLanguage={setLanguage}
+        onClose={() => setIsMobileOpen(false)}
+        onLogin={onLogin}
+        onLogout={onLogout}
+        labels={{
+          signIn: t.header.signIn,
+          signOut: t.header.signOut,
+          profile: t.header.profile,
+          settings: t.header.settings,
+          system: t.header.system
+        }}
+        isPrivate={isPrivate}
+      />
     </header>
   );
 };

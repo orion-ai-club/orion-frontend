@@ -52,11 +52,11 @@ export function StarCompass3D() {
     camera.position.set(0, 4.85, 7.5);
     camera.lookAt(0, 0.05, 0);
 
-    scene.add(new THREE.AmbientLight(0xa7b8e9, 1.55));
-    const warmLight = new THREE.DirectionalLight(0xffd8a1, 3.0);
+    scene.add(new THREE.AmbientLight(0xf4f3ef, 1.55));
+    const warmLight = new THREE.DirectionalLight(0xffba47, 3.0);
     warmLight.position.set(3.5, 6, 4.5);
     scene.add(warmLight);
-    const blueLight = new THREE.DirectionalLight(0x708ad5, 2.0);
+    const blueLight = new THREE.DirectionalLight(0xe2e0dc, 2.0);
     blueLight.position.set(-4, 2.8, -3.5);
     scene.add(blueLight);
 
@@ -64,23 +64,23 @@ export function StarCompass3D() {
     scene.add(rig);
 
     const metal = track(new THREE.MeshStandardMaterial({
-      color: 0x1a2438, metalness: 0.68, roughness: 0.4
+      color: 0x272a30, metalness: 0.68, roughness: 0.4
     }));
     const darkFace = track(new THREE.MeshStandardMaterial({
-      color: 0x090f1b, metalness: 0.42, roughness: 0.54
+      color: 0x0b0e14, metalness: 0.42, roughness: 0.54
     }));
     const blueSteel = track(new THREE.MeshStandardMaterial({
-      color: 0x4e6387, metalness: 0.72, roughness: 0.37
+      color: 0x62676f, metalness: 0.72, roughness: 0.37
     }));
     const gold = track(new THREE.MeshStandardMaterial({
-      color: 0xffc978, metalness: 0.56, roughness: 0.24,
-      emissive: 0x8c4615, emissiveIntensity: 0.28
+      color: 0xffaa00, metalness: 0.56, roughness: 0.24,
+      emissive: 0x8d4100, emissiveIntensity: 0.28
     }));
     const coolGlow = track(new THREE.MeshBasicMaterial({
-      color: 0x7886ed, transparent: true, opacity: 0.65, depthWrite: false
+      color: 0xffaa00, transparent: true, opacity: 0.65, depthWrite: false
     }));
     const softGold = track(new THREE.MeshBasicMaterial({
-      color: 0xe2ae69, transparent: true, opacity: 0.48, depthWrite: false
+      color: 0xffaa00, transparent: true, opacity: 0.48, depthWrite: false
     }));
 
     const add = (
@@ -150,9 +150,9 @@ export function StarCompass3D() {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.font = '700 73px ui-monospace, Menlo, Consolas, monospace';
-      ctx.shadowColor = primary ? '#ffba66' : '#6d8bdc';
+      ctx.shadowColor = primary ? '#ffaa00' : '#a4a9b1';
       ctx.shadowBlur = primary ? 18 : 8;
-      ctx.fillStyle = primary ? '#ffd38f' : '#a6b4d3';
+      ctx.fillStyle = primary ? '#ffaa00' : '#b7bcc4';
       ctx.fillText(letter, 64, 65);
       const texture = track(new THREE.CanvasTexture(surface));
       texture.colorSpace = THREE.SRGBColorSpace;
@@ -214,11 +214,11 @@ export function StarCompass3D() {
     const orbitB = new THREE.Group();
     rig.add(orbitA, orbitB);
     const orbitMaterial = track(new THREE.MeshBasicMaterial({
-      color: 0x9c9bff, transparent: true, opacity: 0.35,
+      color: 0xffaa00, transparent: true, opacity: 0.35,
       depthWrite: false, side: THREE.DoubleSide
     }));
     const orbitGold = track(new THREE.MeshBasicMaterial({
-      color: 0xffc270, transparent: true, opacity: 0.38,
+      color: 0xffaa00, transparent: true, opacity: 0.38,
       depthWrite: false
     }));
     const addOrbit = (parent: THREE.Group, radius: number, material: THREE.Material) => {
@@ -256,7 +256,7 @@ export function StarCompass3D() {
     const starGeometry = track(new THREE.BufferGeometry());
     starGeometry.setAttribute('position', new THREE.BufferAttribute(points, 3));
     const stars = new THREE.Points(starGeometry, track(new THREE.PointsMaterial({
-      color: 0x8ba6e3, size: 0.035, transparent: true,
+      color: 0xc9cbd0, size: 0.035, transparent: true,
       opacity: 0.55, sizeAttenuation: true, depthWrite: false
     })));
     scene.add(stars);
