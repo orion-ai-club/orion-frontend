@@ -79,6 +79,14 @@ export const ResumeView: React.FC<ResumeViewProps> = ({ onNavigate }) => {
   const { t } = useTranslation();
   const [showSpecs, setShowSpecs] = useState(false);
 
+  // Subtle cursor-following light on the existing home Bento cards.
+  const handleInsporaCardMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== 'mouse') return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    event.currentTarget.style.setProperty('--inspo-card-x', `${event.clientX - rect.left}px`);
+    event.currentTarget.style.setProperty('--inspo-card-y', `${event.clientY - rect.top}px`);
+  };
+
   const sections = t.resume.websiteIntro.sections as any;
   const aboutCards = [
     {
@@ -133,7 +141,7 @@ export const ResumeView: React.FC<ResumeViewProps> = ({ onNavigate }) => {
         {/* About Sam - concise, editorial introduction */}
         {t.resume.aboutP1 && (
           <section className="mx-auto mt-10 text-left" aria-labelledby="about-sam-title">
-            <div className="relative overflow-hidden rounded-[2rem] border border-primary-100/80 bg-white/70 p-6 shadow-[0_28px_80px_-55px_rgba(79,70,229,.38)] backdrop-blur-xl dark:border-primary-400/15 dark:bg-slate-950/60 dark:shadow-[0_28px_90px_-55px_rgba(0,0,0,.95)] md:p-9">
+            <div className="orion-inspora-identity relative overflow-hidden rounded-[2rem] border border-primary-100/80 bg-white/70 p-6 shadow-[0_28px_80px_-55px_rgba(79,70,229,.38)] backdrop-blur-xl dark:border-primary-400/15 dark:bg-slate-950/60 dark:shadow-[0_28px_90px_-55px_rgba(0,0,0,.95)] md:p-9">
               <div className="pointer-events-none absolute -right-20 -top-28 h-64 w-64 rounded-full bg-primary-300/20 blur-3xl dark:bg-primary-400/10"></div>
               <div className="relative grid gap-8 lg:grid-cols-[.9fr_1.1fr] lg:items-start">
                 <div>
@@ -215,7 +223,8 @@ export const ResumeView: React.FC<ResumeViewProps> = ({ onNavigate }) => {
           {/* CARD 1: JOURNAL */}
           <div
             onClick={() => onNavigate(PageView.BLOG)}
-            className="group relative flex flex-col justify-between bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-[2.5rem] p-8 border border-slate-200/50 dark:border-slate-800/80 shadow-md hover:shadow-2xl hover:shadow-primary-500/10 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 cursor-pointer overflow-hidden"
+            onPointerMove={handleInsporaCardMove}
+            className="group orion-inspora-card relative flex flex-col justify-between bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-[2.5rem] p-8 border border-slate-200/50 dark:border-slate-800/80 shadow-md hover:shadow-2xl hover:shadow-primary-500/10 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 cursor-pointer overflow-hidden"
           >
             {/* Top gradient highlight bar */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary-400 to-primary-500 opacity-80 group-hover:opacity-100 transition-opacity"></div>
@@ -246,7 +255,8 @@ export const ResumeView: React.FC<ResumeViewProps> = ({ onNavigate }) => {
           {/* CARD 2: PROFILE/RESUME */}
           <div
             onClick={() => onNavigate(PageView.RESUME)}
-            className="group relative flex flex-col justify-between bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-[2.5rem] p-8 border border-slate-200/50 dark:border-slate-800/80 shadow-md hover:shadow-2xl hover:shadow-primary-500/10 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 cursor-pointer overflow-hidden"
+            onPointerMove={handleInsporaCardMove}
+            className="group orion-inspora-card relative flex flex-col justify-between bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-[2.5rem] p-8 border border-slate-200/50 dark:border-slate-800/80 shadow-md hover:shadow-2xl hover:shadow-primary-500/10 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 cursor-pointer overflow-hidden"
           >
             {/* Top gradient highlight bar */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary-400 to-primary-500 opacity-80 group-hover:opacity-100 transition-opacity"></div>
@@ -277,7 +287,8 @@ export const ResumeView: React.FC<ResumeViewProps> = ({ onNavigate }) => {
           {/* CARD 3: PROJECTS (replaces retired human chat) */}
           <div
             onClick={() => onNavigate(PageView.RESUME)}
-            className="group relative flex flex-col justify-between bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-[2.5rem] p-8 border border-slate-200/50 dark:border-slate-800/80 shadow-md hover:shadow-2xl hover:shadow-primary-500/10 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 cursor-pointer overflow-hidden"
+            onPointerMove={handleInsporaCardMove}
+            className="group orion-inspora-card relative flex flex-col justify-between bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-[2.5rem] p-8 border border-slate-200/50 dark:border-slate-800/80 shadow-md hover:shadow-2xl hover:shadow-primary-500/10 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 cursor-pointer overflow-hidden"
           >
             {/* Top gradient highlight bar */}
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary-400 to-primary-500 opacity-80 group-hover:opacity-100 transition-opacity"></div>

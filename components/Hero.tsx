@@ -10,7 +10,15 @@ export const Hero: React.FC<HeroProps> = ({ onCtaClick, onSecondaryCtaClick }) =
   const { t } = useTranslation();
 
   return (
-    <section className="relative pt-24 pb-16 md:pt-36 md:pb-24 overflow-hidden min-h-[75vh] flex items-center justify-center pointer-events-none">
+    <section
+      onPointerMove={(event) => {
+        if (event.pointerType !== 'mouse') return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        event.currentTarget.style.setProperty('--inspo-x', `${event.clientX - rect.left}px`);
+        event.currentTarget.style.setProperty('--inspo-y', `${event.clientY - rect.top}px`);
+      }}
+      className="orion-inspora-hero relative pt-24 pb-16 md:pt-36 md:pb-24 overflow-hidden min-h-[75vh] flex items-center justify-center pointer-events-none"
+    >
       {/* Content */}
       <div className="container mx-auto px-6 relative z-10 text-center max-w-5xl pointer-events-auto">
         {/* Main Title - Adapts Gradient */}
@@ -41,7 +49,7 @@ export const Hero: React.FC<HeroProps> = ({ onCtaClick, onSecondaryCtaClick }) =
         >
           <button
             onClick={onCtaClick}
-            className="group relative w-full sm:w-auto px-10 py-5 bg-primary-500 text-white font-bold text-sm uppercase tracking-[0.15em] transition-all hover:bg-primary-600 hover:shadow-[0_0_30px_rgba(var(--color-primary-500),0.4)] clip-path-polygon"
+            className="group orion-inspora-cta relative w-full sm:w-auto px-10 py-5 bg-primary-500 text-white font-bold text-sm uppercase tracking-[0.15em] transition-all hover:bg-primary-600 hover:shadow-[0_0_30px_rgba(var(--color-primary-500),0.4)] clip-path-polygon"
           >
             <span className="relative z-10 flex items-center gap-2">
               {t.hero.ctaPrimary}{' '}
