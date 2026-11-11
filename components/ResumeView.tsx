@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { useTranslation } from '../i18n/LanguageContext';
 import { PageView } from '../types';
 import { createPortal } from 'react-dom';
@@ -7,7 +7,7 @@ import { LinkedInBadge } from './LinkedInBadge';
 import { Spotlight } from './effects/Spotlight';
 
 // --- Star Compass Component ---
-const StarCompass = () => {
+const LegacyStarCompass = () => {
   const [rotation, setRotation] = useState(0);
   const compassRef = useRef<HTMLDivElement>(null);
 
@@ -68,6 +68,42 @@ const StarCompass = () => {
           Interstellar Compass
         </div>
       </div>
+    </div>
+  );
+};
+
+const Compass3D = lazy(() => import('./StarCompass3D'));
+
+/** Keep the original 2D compass as a loading fallback; lazy load Three.js
+ * only when the compass approaches the viewport. */
+const StarCompass: React.FC = () => {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const node = wrapperRef.current;
+    if (!node) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setReady(true);
+      return;
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setReady(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: '320px 0px' });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={wrapperRef} className="w-full">
+      {ready ? (
+        <Suspense fallback={<LegacyStarCompass />}>
+          <Compass3D />
+        </Suspense>
+      ) : <LegacyStarCompass />}
     </div>
   );
 };
