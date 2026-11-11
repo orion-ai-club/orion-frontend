@@ -2,6 +2,7 @@ import { fetchClient, fetchEventStream } from './core';
 import { toast } from '../components/Toast';
 import { uploadImage } from './media';
 import { mutateArticle } from './articleMutations';
+import { mutateComment } from './commentMutations';
 import {
   BlogPost,
   Comment,
@@ -317,16 +318,13 @@ export const contentService = {
     postId: string,
     user: User,
     comment: string,
-    photoURL?: string
+    _photoURL?: string
   ): Promise<Comment[]> => {
-    const res = await fetchClient<any>(`/comments/${postId}?user_id=${user._id}`, {
-      method: 'POST',
-      body: JSON.stringify({ user, comment, photoURL })
-    });
+    const res = await mutateComment<any>(user._id, `/comments/${postId}`, { comment });
     toast.success('Message transmitted.');
     if (Array.isArray(res)) return res;
     if (res && Array.isArray(res.data)) return res.data;
-    return Array.isArray(res) ? res : [];
+    return res && (res._id || res.id) ? [res] : [];
   },
 
   getReplies: async (commentId: string): Promise<Comment[]> => {
@@ -339,11 +337,11 @@ export const contentService = {
     user: User,
     reply: string,
     targetUser: any,
-    photoURL?: string
+    _photoURL?: string
   ): Promise<Comment[]> => {
-    const res = await fetchClient<any>(`/comments/reply/${commentId}`, {
-      method: 'POST',
-      body: JSON.stringify({ user, reply, photoURL, targetUser })
+    const res = await mutateComment<any>(user._id, `/comments/reply/${commentId}`, {
+      reply,
+      targetUser: typeof targetUser === 'string' ? targetUser : targetUser?._id
     });
     toast.success('Reply transmitted.');
     return Array.isArray(res) ? res : [];

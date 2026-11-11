@@ -91,6 +91,12 @@ flowchart TD
 32 个 R2 分片均通过 SHA-256，隔离恢复了 36 个集合、1,271 条记录，
 核对 65 个次级索引。旧 Cloud Run 暂时保留用于其他未迁移功能。
 
+评论和回复客户端已对齐两端接受的最小请求格式；结果不明时保留按账号隔离的幂等键，
+支持刷新后继续重试。Worker 灰度默认关闭，受控验收标签页可设置
+`sessionStorage['orion:comment-worker-canary:<用户ID>'] = '1'`，同时仍须后端
+`COMMENT_WRITE_CANARY` 放行。Google 认证继续走旧路径。结果未确认时不要切换客户端或
+服务端路由；旧 Cloud Run 不会按此幂等键去重。真实登录态验收和生产切流仍需单独完成。
+
 **最终后端目标（未上线）：** 保留 Vercel 前端 + Gateway + Core Workers /
 Durable Objects + 现有 MongoDB + R2 + 原生 Cron；保留登录、OAuth、
 Second Brain MCP 和 AI，移除 Cloud Run/容器。未完成认证、MCP、个人
