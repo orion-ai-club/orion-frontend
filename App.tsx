@@ -211,7 +211,7 @@ const App: React.FC = () => {
     if (savedTheme === Theme.DARK || savedTheme === Theme.LIGHT) {
       return savedTheme as Theme;
     }
-    return Theme.LIGHT;
+    return Theme.DARK;
   });
   const [user, setUser] = useState<User | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
