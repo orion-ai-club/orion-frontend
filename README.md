@@ -12,7 +12,6 @@ A bilingual digital garden, engineering portfolio, and personal operating system
 
 </div>
 
-
 ## Why Orion
 
 - **One place for public and private work** — portfolio, journal, personal systems, utilities, and private data live in one coherent product.
@@ -113,6 +112,15 @@ flowchart TD
 The Gateway enforces explicit route allowlists, security headers, rate limits,
 auth-carrier forwarding and per-feature cutover flags. **A Core implementation
 or passing canary does not mean global routing has changed.**
+
+Comment/reply writes use the same minimal payload on legacy and Worker paths,
+with account-scoped pending idempotency keys retained across uncertain responses
+and tab reloads. Worker opt-in is off by default: a controlled browser acceptance
+session may set `sessionStorage['orion:comment-worker-canary:<user-id>'] = '1'`.
+The backend `COMMENT_WRITE_CANARY` gate must also allow it; Google identity stays
+on legacy routing. Do not change client or server routing while an operation is
+unsettled. Legacy Cloud Run does not deduplicate these keys. Production cutover
+and authenticated browser acceptance remain separate deployment steps.
 
 On 2026-11-07 normal `POST /api/backup/database` was cut over to private R2.
 Independent read-only verification checked 32/32 R2 SHA-256 parts and restored

@@ -15,7 +15,8 @@
     "test:journal": "node tests/journal/run.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "node tests/journal/run.mjs && node --test tests/dataUrl.test.mjs && node tests/brain/run.mjs",
+    "test": "node tests/journal/run.mjs && node --test tests/dataUrl.test.mjs && node tests/brain/run.mjs && node tests/commentMutations.test.mjs",
+    "test:comments": "node tests/commentMutations.test.mjs",
     "smoke:production": "node scripts/production-smoke.mjs",
     "test:brain": "node tests/brain/run.mjs"
   },
