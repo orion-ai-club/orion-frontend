@@ -714,7 +714,7 @@ body {
   margin: 38px 0 30px;
   max-width: 840px;
 }
-.sam-hero h1 > span { display: block; white-space: nowrap; }
+.sam-hero h1 > span { display: block; overflow-wrap: normal; }
 .sam-hero-accent {
   font-family: Georgia, 'Times New Roman', serif;
   font-weight: 500;

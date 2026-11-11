@@ -16,6 +16,7 @@ import {
   Terminal,
 } from 'lucide-react';
 import { useTranslation } from '../i18n/LanguageContext';
+import { MiamiCreed } from '../components/MiamiCreed';
 
 type Project = {
   number: string;
@@ -334,6 +335,8 @@ export const HomePage: React.FC = () => {
         </div>
         <Link to="/blogs" className="sam-text-link">{c.journalCta}<ArrowRight size={18} /></Link>
       </section>
+
+      <MiamiCreed />
 
       <div className="sam-home-signoff">
         <span>© {new Date().getFullYear()} Sam Yao · {c.closing}</span>
