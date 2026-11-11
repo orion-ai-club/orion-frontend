@@ -4,6 +4,7 @@ import { PageView } from '../types';
 import { createPortal } from 'react-dom';
 import { LikeButton } from './LikeButton';
 import { LinkedInBadge } from './LinkedInBadge';
+import { Spotlight } from './effects/Spotlight';
 
 // --- Star Compass Component ---
 const StarCompass = () => {
@@ -79,13 +80,6 @@ export const ResumeView: React.FC<ResumeViewProps> = ({ onNavigate }) => {
   const { t } = useTranslation();
   const [showSpecs, setShowSpecs] = useState(false);
 
-  // Subtle cursor-following light on the existing home Bento cards.
-  const handleInsporaCardMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.pointerType !== 'mouse') return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    event.currentTarget.style.setProperty('--inspo-card-x', `${event.clientX - rect.left}px`);
-    event.currentTarget.style.setProperty('--inspo-card-y', `${event.clientY - rect.top}px`);
-  };
 
   const sections = t.resume.websiteIntro.sections as any;
   const aboutCards = [
@@ -221,9 +215,16 @@ export const ResumeView: React.FC<ResumeViewProps> = ({ onNavigate }) => {
         {/* Bento Grid Layout */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* CARD 1: JOURNAL */}
-          <div
+          <Spotlight
             onClick={() => onNavigate(PageView.BLOG)}
-            onPointerMove={handleInsporaCardMove}
+            role="link"
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onNavigate(PageView.BLOG);
+              }
+            }}
             className="group orion-inspora-card relative flex flex-col justify-between bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-[2.5rem] p-8 border border-slate-200/50 dark:border-slate-800/80 shadow-md hover:shadow-2xl hover:shadow-primary-500/10 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 cursor-pointer overflow-hidden"
           >
             {/* Top gradient highlight bar */}
@@ -250,12 +251,19 @@ export const ResumeView: React.FC<ResumeViewProps> = ({ onNavigate }) => {
                 <i className="fas fa-arrow-right transition-transform group-hover:translate-x-1 duration-300"></i>
               </span>
             </div>
-          </div>
+          </Spotlight>
 
           {/* CARD 2: PROFILE/RESUME */}
-          <div
+          <Spotlight
             onClick={() => onNavigate(PageView.RESUME)}
-            onPointerMove={handleInsporaCardMove}
+            role="link"
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onNavigate(PageView.RESUME);
+              }
+            }}
             className="group orion-inspora-card relative flex flex-col justify-between bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-[2.5rem] p-8 border border-slate-200/50 dark:border-slate-800/80 shadow-md hover:shadow-2xl hover:shadow-primary-500/10 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 cursor-pointer overflow-hidden"
           >
             {/* Top gradient highlight bar */}
@@ -282,12 +290,19 @@ export const ResumeView: React.FC<ResumeViewProps> = ({ onNavigate }) => {
                 <i className="fas fa-arrow-right transition-transform group-hover:translate-x-1 duration-300"></i>
               </span>
             </div>
-          </div>
+          </Spotlight>
 
           {/* CARD 3: PROJECTS (replaces retired human chat) */}
-          <div
+          <Spotlight
             onClick={() => onNavigate(PageView.RESUME)}
-            onPointerMove={handleInsporaCardMove}
+            role="link"
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onNavigate(PageView.RESUME);
+              }
+            }}
             className="group orion-inspora-card relative flex flex-col justify-between bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-[2.5rem] p-8 border border-slate-200/50 dark:border-slate-800/80 shadow-md hover:shadow-2xl hover:shadow-primary-500/10 hover:-translate-y-2 hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 cursor-pointer overflow-hidden"
           >
             {/* Top gradient highlight bar */}
@@ -314,7 +329,7 @@ export const ResumeView: React.FC<ResumeViewProps> = ({ onNavigate }) => {
                 <i className="fas fa-arrow-right transition-transform group-hover:translate-x-1 duration-300"></i>
               </span>
             </div>
-          </div>
+          </Spotlight>
         </div>
       </div>
 

@@ -1,5 +1,7 @@
 import React from 'react';
 import { useTranslation } from '../i18n/LanguageContext';
+import { TextReveal } from './effects/TextReveal';
+import { ShimmerButton } from './effects/ShimmerButton';
 
 interface HeroProps {
   onCtaClick: () => void;
@@ -23,7 +25,7 @@ export const Hero: React.FC<HeroProps> = ({ onCtaClick, onSecondaryCtaClick }) =
       <div className="container mx-auto px-6 relative z-10 text-center max-w-5xl pointer-events-auto">
         {/* Main Title - Adapts Gradient */}
         <h1 className="font-display font-bold text-6xl md:text-8xl lg:text-9xl tracking-tighter text-slate-900 dark:text-white mb-6 leading-[0.9] animate-slide-up drop-shadow-2xl">
-          <span className="block text-slate-900 dark:text-slate-100">{t.hero.title1}</span>
+          <span className="block text-slate-900 dark:text-slate-100"><TextReveal text={t.hero.title1} delay={0.08} /></span>
           <span className="block text-transparent bg-clip-text bg-gradient-to-r from-primary-500 via-primary-600 to-primary-700 dark:from-primary-200 dark:via-primary-500 dark:to-primary-600 animate-gradient-x pb-2">
             {t.hero.title2}
           </span>
@@ -47,7 +49,7 @@ export const Hero: React.FC<HeroProps> = ({ onCtaClick, onSecondaryCtaClick }) =
           className="flex flex-col sm:flex-row items-center justify-center gap-6 animate-slide-up"
           style={{ animationDelay: '0.2s' }}
         >
-          <button
+          <ShimmerButton
             onClick={onCtaClick}
             className="group orion-inspora-cta relative w-full sm:w-auto px-10 py-5 bg-primary-500 text-white font-bold text-sm uppercase tracking-[0.15em] transition-all hover:bg-primary-600 hover:shadow-[0_0_30px_rgba(var(--color-primary-500),0.4)] clip-path-polygon"
           >
@@ -55,7 +57,7 @@ export const Hero: React.FC<HeroProps> = ({ onCtaClick, onSecondaryCtaClick }) =
               {t.hero.ctaPrimary}{' '}
               <i className="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
             </span>
-          </button>
+          </ShimmerButton>
 
           <button
             onClick={

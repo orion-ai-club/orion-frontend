@@ -611,11 +611,10 @@ body {
 }
 
 
-/* Inspora-inspired micro-interactions on the ORIGINAL public homepage.
-   No structural, copy or route changes. Scoped to existing components. */
-.orion-inspora-hero {
-  isolation: isolate;
-}
+/* Source-backed motion layer (see components/effects/THIRD_PARTY_NOTICES.md).
+   Original Orion layout, palette, copy and starfield remain unchanged. */
+
+.orion-inspora-hero { isolation: isolate; }
 .orion-inspora-hero::before {
   content: '';
   position: absolute;
@@ -624,91 +623,119 @@ body {
   pointer-events: none;
   opacity: 0;
   background: radial-gradient(
-    450px circle at var(--inspo-x, 50%) var(--inspo-y, 48%),
-    rgba(251, 191, 36, 0.12),
-    rgba(251, 191, 36, 0.035) 38%,
+    440px circle at var(--inspo-x, 50%) var(--inspo-y, 48%),
+    rgba(251, 191, 36, .095),
+    rgba(251, 191, 36, .022) 48%,
     transparent 72%
   );
-  transition: opacity 350ms ease;
+  transition: opacity 400ms ease;
 }
-.dark .orion-inspora-hero:hover::before {
-  opacity: 1;
+.dark .orion-inspora-hero:hover::before { opacity: 1; }
+.dark .orion-inspora-hero h1:hover > span:nth-child(2) {
+  filter: drop-shadow(0 0 23px rgba(251, 191, 36, .17));
 }
-.orion-inspora-hero h1 span:last-child {
-  background-size: 200% auto;
-  transition: filter 300ms ease;
+.orion-inspora-identity { transition: box-shadow 350ms ease, border-color 350ms ease; }
+.dark .orion-inspora-identity:hover {
+  border-color: rgba(251, 191, 36, .25);
+  box-shadow: 0 20px 76px -44px rgba(251, 191, 36, .19);
 }
-.dark .orion-inspora-hero h1:hover span:last-child {
-  filter: drop-shadow(0 0 24px rgba(251, 191, 36, 0.2));
+
+/* Adapted Arc Library Text Reveal: word rise + soft focus, first paint only. */
+.orion-text-reveal { display: inline-block; color: inherit; }
+.orion-text-reveal-line { display: inline; color: inherit; }
+.orion-text-reveal-clip {
+  display: inline-block;
+  vertical-align: baseline;
+  padding: .12em .13em .26em;
+  margin: -.12em -.13em -.26em;
+  mask-image: linear-gradient(#000 calc(100% - .15em), transparent);
+  -webkit-mask-image: linear-gradient(#000 calc(100% - .15em), transparent);
 }
-.orion-inspora-cta {
-  isolation: isolate;
-  overflow: hidden;
+.orion-text-reveal-word {
+  display: inline-block;
+  color: inherit;
+  animation:
+    orion-word-rise .76s cubic-bezier(.2,.74,.2,1) var(--reveal-delay,0s) backwards,
+    orion-word-fade .38s ease-out var(--reveal-delay,0s) backwards,
+    orion-word-focus .58s cubic-bezier(.2,.74,.2,1) var(--reveal-delay,0s) backwards;
 }
-.orion-inspora-cta::after {
-  content: '';
+@keyframes orion-word-rise { from { transform: translateY(.62em); } }
+@keyframes orion-word-fade { from { opacity: 0; } }
+@keyframes orion-word-focus { from { filter: blur(var(--reveal-blur,6px)); } }
+
+/* Adapted Klyv ShimmerButton: uses original Orion CTA shape and type. */
+.orion-shimmer-button { isolation: isolate; position: relative; overflow: hidden; }
+.orion-shimmer-glow {
   position: absolute;
   z-index: 0;
-  top: -80%;
-  bottom: -80%;
-  width: 28%;
-  left: -65%;
+  width: 170px;
+  height: 170px;
+  left: var(--glow-x,50%);
+  top: var(--glow-y,50%);
+  transform: translate(-50%,-50%);
   pointer-events: none;
-  transform: skewX(-24deg);
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.24), transparent);
-  transition: left 580ms cubic-bezier(.22,.68,.22,1);
+  opacity: var(--glow-opacity,0);
+  background: radial-gradient(circle,rgba(255,255,255,.34),transparent 67%);
+  mix-blend-mode: screen;
+  transition: opacity 260ms ease;
 }
-.orion-inspora-cta:hover::after,
-.orion-inspora-cta:focus-visible::after {
-  left: 135%;
+.orion-shimmer-sheen {
+  position: absolute;
+  z-index: 1;
+  top: -65%;
+  bottom: -65%;
+  width: 26%;
+  left: -55%;
+  transform: skewX(-21deg);
+  pointer-events: none;
+  opacity: .58;
+  background: linear-gradient(90deg,transparent,rgba(255,255,255,.33),transparent);
+  animation: orion-shimmer-sweep var(--shimmer-duration,4s) ease-in-out infinite;
 }
-.orion-inspora-card {
-  isolation: isolate;
+.orion-shimmer-content { position: relative; z-index: 2; display: inline-flex; align-items: center; justify-content: center; }
+@keyframes orion-shimmer-sweep {
+  0%,12% { left: -55%; }
+  35%,100% { left: 135%; }
 }
-.orion-inspora-card::after {
-  content: '';
+.orion-shimmer-button:hover .orion-shimmer-sheen { opacity: .88; }
+
+/* Adapted Corsair UI Spotlight: source's two-layer light and masked edge. */
+.orion-spotlight { isolation: isolate; }
+.orion-spotlight-light,
+.orion-spotlight-ring {
   position: absolute;
   inset: 0;
   z-index: 1;
-  pointer-events: none;
   border-radius: inherit;
   opacity: 0;
-  background: radial-gradient(
-    310px circle at var(--inspo-card-x, 50%) var(--inspo-card-y, 50%),
-    rgba(251, 191, 36, .15) 0%,
-    rgba(251, 191, 36, .045) 42%,
-    transparent 72%
-  );
-  transition: opacity 280ms ease;
+  pointer-events: none;
+  transition: opacity 240ms ease;
 }
-.dark .orion-inspora-card:hover::after,
-.dark .orion-inspora-card:focus-visible::after {
-  opacity: 1;
+.orion-spotlight-ring { z-index: 2; padding: 1.5px; }
+.dark .orion-spotlight:hover .orion-spotlight-light,
+.dark .orion-spotlight:hover .orion-spotlight-ring,
+.dark .orion-spotlight:focus-visible .orion-spotlight-light,
+.dark .orion-spotlight:focus-visible .orion-spotlight-ring { opacity: 1; }
+.dark .orion-spotlight:hover {
+  border-color: rgba(251,191,36,.25);
+  box-shadow: 0 22px 60px rgba(0,0,0,.28),0 0 34px rgba(251,191,36,.06);
 }
-.dark .orion-inspora-card:hover {
-  border-color: rgba(251, 191, 36, .32);
-  box-shadow: 0 22px 60px rgba(0,0,0,.28), 0 0 32px rgba(251, 191, 36, .055);
+.orion-spotlight:focus-visible,
+.orion-shimmer-button:focus-visible {
+  outline: 2px solid rgb(251 191 36);
+  outline-offset: 4px;
 }
-.orion-inspora-identity {
-  transition: box-shadow 360ms ease, border-color 360ms ease;
-}
-.dark .orion-inspora-identity:hover {
-  border-color: rgba(251, 191, 36, .25);
-  box-shadow: 0 20px 76px -44px rgba(251, 191, 36, .18);
-}
+
 @media (hover: none), (pointer: coarse) {
   .orion-inspora-hero::before,
-  .orion-inspora-card::after {
-    display: none;
-  }
+  .orion-spotlight-light,
+  .orion-spotlight-ring { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .orion-text-reveal-word,
+  .orion-shimmer-sheen { animation: none !important; }
   .orion-inspora-hero::before,
-  .orion-inspora-hero h1 span:last-child,
-  .orion-inspora-cta::after,
-  .orion-inspora-card::after,
-  .orion-inspora-identity {
-    transition: none !important;
-    animation: none !important;
-  }
+  .orion-inspora-identity,
+  .orion-spotlight-light,
+  .orion-spotlight-ring { transition: none !important; }
 }
