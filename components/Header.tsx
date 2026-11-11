@@ -190,6 +190,7 @@ export const Header: React.FC<HeaderProps> = ({
   }
 
   const isPrivate = location.pathname.startsWith('/captain-cabin');
+  const isLanding = location.pathname === '/';
 
   let headerClasses = `fixed w-full top-0 z-[2000] transition-all duration-500 `;
   if (isPrivate) {
@@ -247,11 +248,11 @@ export const Header: React.FC<HeaderProps> = ({
             <span
               className={`font-display text-xl tracking-widest uppercase transition-colors duration-300 leading-none ${isPrivate ? 'text-rose-600 group-hover:text-rose-500 font-bold' : 'text-slate-800 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 font-bold'}`}
             >
-              Orion
+              {isLanding ? 'Sam Yao' : 'Orion'}
             </span>
             {!isPrivate && (
               <span className="text-[7px] font-mono text-slate-400 dark:text-slate-500 uppercase tracking-[0.25em] hidden sm:block group-hover:text-primary-500/70 transition-colors mt-0.5">
-                Navigate Value
+                {isLanding ? 'ENGINEER / BUILDER' : 'Navigate Value'}
               </span>
             )}
           </div>

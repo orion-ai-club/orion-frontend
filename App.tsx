@@ -2,8 +2,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { Header } from './components/Header';
 import { MobileBottomNav } from './components/MobileBottomNav';
-import { Hero } from './components/Hero';
-import { MiamiCreed } from './components/MiamiCreed';
+import { HomePage } from './pages/HomePage';
 import { CosmicBackground } from './components/CosmicBackground';
 import { ScenicBackground } from './components/ScenicBackground';
 import { ToastContainer } from './components/Toast';
@@ -31,9 +30,6 @@ import { createLazyComponent } from './components/LazyLoader';
 
 const LoginModal = createLazyComponent(() =>
   import('./components/LoginModal').then((module) => ({ default: module.LoginModal }))
-);
-const ResumeView = createLazyComponent(() =>
-  import('./components/ResumeView').then((module) => ({ default: module.ResumeView }))
 );
 const BlogList = createLazyComponent(() =>
   import('./pages/BlogList').then((module) => ({ default: module.BlogList }))
@@ -98,6 +94,7 @@ const Layout: React.FC<{
 }> = ({ user, theme, toggleTheme, onLogin, onLogout }) => {
   const location = useLocation();
   const isPrivateSpace = location.pathname.startsWith('/captain-cabin');
+  const isHomePage = location.pathname === '/';
 
   // Logic to identify Article View (slug based route) to remove animations
   const isArticleView = /^\/blogs\/.+/.test(location.pathname);
@@ -128,7 +125,7 @@ const Layout: React.FC<{
 
   return (
     <div
-      className={`min-h-screen relative overflow-hidden transition-colors duration-500 selection:bg-primary-500/30 ${mainBgClass}`}
+      className={`min-h-screen relative overflow-hidden transition-colors duration-500 selection:bg-primary-500/30 ${mainBgClass} ${isHomePage ? 'sam-home-layout' : ''}`}
     >
       <Helmet titleTemplate="%s | Orion" defaultTitle="Orion | Engineering & Design">
         <meta
@@ -141,7 +138,7 @@ const Layout: React.FC<{
       <InstallPwa />
 
       {/* Hide Background Animations on Private Space OR Article View */}
-      {!isPrivateSpace && !isArticleView && (
+      {!isPrivateSpace && !isArticleView && !isHomePage && (
         <>{theme === Theme.DARK ? <CosmicBackground theme={theme} /> : <ScenicBackground />}</>
       )}
 
@@ -161,11 +158,13 @@ const Layout: React.FC<{
         </div>
       </main>
 
-      <Footer
-        currentPage={getCurrentPageView(location.pathname)}
-        currentUser={user}
-        onLogin={onLogin}
-      />
+      {!isHomePage && (
+        <Footer
+          currentPage={getCurrentPageView(location.pathname)}
+          currentUser={user}
+          onLogin={onLogin}
+        />
+      )}
 
       {/* Mobile Bottom Navigation */}
       <div className="block xl:hidden">
@@ -211,7 +210,7 @@ const App: React.FC = () => {
     if (savedTheme === Theme.DARK || savedTheme === Theme.LIGHT) {
       return savedTheme as Theme;
     }
-    return Theme.LIGHT;
+    return Theme.DARK;
   });
   const [user, setUser] = useState<User | null>(null);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
@@ -439,20 +438,7 @@ const App: React.FC = () => {
                   />
                   <meta property="og:url" content="https://samyao.me/" />
                 </Helmet>
-                <Hero
-                  onCtaClick={() => navigate('/blogs')}
-                  onSecondaryCtaClick={() => navigate('/profile')}
-                />
-                <div id="console" className="pointer-events-auto">
-                  <ResumeView
-                    onNavigate={(page) => {
-                      if (page === PageView.BLOG) navigate('/blogs');
-                      else if (page === PageView.RESUME) navigate('/profile');
-                      else if (page === PageView.PROFILE) navigate('/user-profile');
-                    }}
-                  />
-                </div>
-                <MiamiCreed />
+                <HomePage />
               </>
             }
           />
