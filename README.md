@@ -119,7 +119,12 @@ and tab reloads. Worker opt-in is off by default: a controlled browser acceptanc
 session may set `sessionStorage['orion:comment-worker-canary:<user-id>'] = '1'`.
 The backend `COMMENT_WRITE_CANARY` gate must also allow it; Google identity stays
 on legacy routing. Do not change client or server routing while an operation is
-unsettled. Legacy Cloud Run does not deduplicate these keys. Production cutover
+unsettled. The v2 client negotiates `/comments/write-policy` only for a new operation and
+persists its selected backend together with the key. Retries send the same
+`x-orion-comment-write-route` even across rollout or rollback. Old normal pending
+keys remain legacy; ambiguous old manual canaries block for outcome review.
+Controlled acceptance can also use a dedicated page URL with
+`?comment_worker_canary=1`. Legacy Cloud Run does not deduplicate these keys. Production cutover
 and authenticated browser acceptance remain separate deployment steps.
 
 On 2026-11-07 normal `POST /api/backup/database` was cut over to private R2.

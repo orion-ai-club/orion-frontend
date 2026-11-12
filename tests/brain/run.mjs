@@ -270,7 +270,11 @@ try {
   await page.click('[data-topic=preference]');
   assert.equal(await page.$eval('[aria-label="Type"]', (el) => el.value), 'preference');
   await navClick('AI Sync');
-  await page.waitForSelector('[aria-label="MCP URL"]');
+  await page.waitForFunction(
+    (expected) => document.querySelector('[aria-label="MCP URL"]')?.value === expected,
+    {},
+    config.mcpUrl
+  );
   assert.equal(await page.$eval('[aria-label="MCP URL"]', (el) => el.value), config.mcpUrl);
   assert.equal(await page.$('.knowledge-agreement'), null);
   await screenshot('connections-desktop');

@@ -22,6 +22,9 @@ try {
   const requests = [];
   const receipts = new Map();
   let loseResponse = true;
+  let workerDefault = false;
+  let policyUnavailable = false;
+  let policyRequests = 0;
   await page.setRequestInterception(true);
   page.on('request', async (request) => {
     const url = new URL(request.url());
@@ -29,10 +32,30 @@ try {
     if (url.pathname === '/__comment_test')
       return request.respond({ status: 200, contentType: 'text/html', body: fixture });
     if (!url.pathname.startsWith('/api/')) return request.continue();
+    if (url.pathname === '/api/comments/write-policy') {
+      assert.equal(request.method(), 'GET');
+      policyRequests++;
+      if (policyUnavailable)
+        return request.respond({
+          status: 503,
+          contentType: 'application/json',
+          body: '{"message":"Routing unavailable"}'
+        });
+      const headers = request.headers();
+      const worker =
+        (workerDefault || headers['x-orion-comment-write-canary'] === '1') &&
+        !headers['x-google-auth'];
+      return request.respond({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ version: 2, route: worker ? 'worker' : 'legacy' })
+      });
+    }
     assert.equal(request.method(), 'POST');
     assert.equal(url.search, '');
     const body = JSON.parse(request.postData());
     const headers = request.headers();
+    assert.match(headers['x-orion-comment-write-route'], /^(legacy|worker)$/);
     assert.match(headers.cookie, /orion_session=synthetic-session/);
     const key = headers['idempotency-key'];
     assert.match(key, /^[a-f0-9-]{36}$/i);
@@ -109,8 +132,10 @@ try {
     'Confirmed success permits a new intentional comment'
   );
   const before = requests.length;
+  const policiesBeforeConcurrent = policyRequests;
   await Promise.all([submit('Concurrent comment'), submit('Concurrent comment')]);
   assert.equal(requests.length, before + 1, 'Double submission shares one in-flight operation');
+  assert.equal(policyRequests, policiesBeforeConcurrent + 1, 'Route lookup is also coalesced');
   await page.evaluate(async () => {
     await window.commentsApi.addReply(
       '507f1f77bcf86cd799439099',
@@ -133,6 +158,83 @@ try {
     undefined,
     'Google identity stays on the legacy route'
   );
+  await page.evaluate(() => {
+    localStorage.removeItem('googleInfo');
+    sessionStorage.removeItem('orion:comment-worker-canary:507f1f77bcf86cd799439011');
+  });
+  const policiesBeforePin = policyRequests;
+  loseResponse = true;
+  await assert.rejects(() => submit('Pending legacy at cutover'), /Outcome unknown/);
+  const legacyKey = requests.at(-1).headers['idempotency-key'];
+  assert.equal(requests.at(-1).headers['x-orion-comment-write-route'], 'legacy');
+  workerDefault = true;
+  await ready();
+  await submit('Pending legacy at cutover');
+  assert.equal(requests.at(-1).headers['idempotency-key'], legacyKey);
+  assert.equal(requests.at(-1).headers['x-orion-comment-write-route'], 'legacy');
+  assert.equal(policyRequests, policiesBeforePin + 1, 'Pending retries never renegotiate');
+  await submit('New operation after cutover');
+  assert.equal(requests.at(-1).headers['x-orion-comment-write-route'], 'worker');
+  loseResponse = true;
+  await assert.rejects(() => submit('Worker operation at rollback'), /Outcome unknown/);
+  const workerKey = requests.at(-1).headers['idempotency-key'];
+  workerDefault = false;
+  await ready();
+  await submit('Worker operation at rollback');
+  assert.equal(requests.at(-1).headers['idempotency-key'], workerKey);
+  assert.equal(requests.at(-1).headers['x-orion-comment-write-route'], 'worker');
+
+  loseResponse = true;
+  await assert.rejects(() => submit('Old client legacy retry'), /Outcome unknown/);
+  const oldKey = requests.at(-1).headers['idempotency-key'];
+  await page.evaluate(() => {
+    for (const key of Object.keys(sessionStorage).filter((k) =>
+      k.startsWith('orion:comment-write:')
+    )) {
+      const record = JSON.parse(sessionStorage.getItem(key));
+      delete record.version;
+      delete record.route;
+      sessionStorage.setItem(key, JSON.stringify(record));
+    }
+  });
+  await ready();
+  workerDefault = true;
+  const oldPolicyCount = policyRequests;
+  await submit('Old client legacy retry');
+  assert.equal(requests.at(-1).headers['idempotency-key'], oldKey);
+  assert.equal(requests.at(-1).headers['x-orion-comment-write-route'], 'legacy');
+  assert.equal(policyRequests, oldPolicyCount);
+
+  policyUnavailable = true;
+  const beforeUnavailable = requests.length;
+  await assert.rejects(() => submit('Policy unavailable'), /Routing unavailable/);
+  assert.equal(requests.length, beforeUnavailable, 'No write without a known route');
+  policyUnavailable = false;
+  workerDefault = false;
+  await page.goto(base + '/__comment_test?comment_worker_canary=1');
+  await page.waitForFunction(() => Boolean(window.commentsApi));
+  await submit('URL canary operation');
+  assert.equal(requests.at(-1).headers['x-orion-comment-write-route'], 'worker');
+  loseResponse = true;
+  await assert.rejects(() => submit('Ambiguous old manual canary'), /Outcome unknown/);
+  const savedCanary = await page.evaluate(() => {
+    const key = Object.keys(sessionStorage).find((k) => k.startsWith('orion:comment-write:'));
+    const value = sessionStorage.getItem(key);
+    const record = JSON.parse(value);
+    delete record.version;
+    delete record.route;
+    sessionStorage.setItem(key, JSON.stringify(record));
+    return { key, value };
+  });
+  await ready();
+  const beforeAmbiguous = requests.length;
+  await assert.rejects(() => submit('Ambiguous old manual canary'), /routing cannot be determined/);
+  assert.equal(requests.length, beforeAmbiguous);
+  await page.evaluate(({ key, value }) => sessionStorage.setItem(key, value), savedCanary);
+  await page.goto(base + '/__comment_test?comment_worker_canary=1');
+  await page.waitForFunction(() => Boolean(window.commentsApi));
+  await submit('Ambiguous old manual canary');
+  await ready();
   await page.evaluate(() => {
     localStorage.removeItem('googleInfo');
     Object.defineProperty(window, 'sessionStorage', {

@@ -97,6 +97,11 @@ flowchart TD
 `COMMENT_WRITE_CANARY` 放行。Google 认证继续走旧路径。结果未确认时不要切换客户端或
 服务端路由；旧 Cloud Run 不会按此幂等键去重。真实登录态验收和生产切流仍需单独完成。
 
+v2 客户端仅为新操作查询 `/comments/write-policy`，将选定的后端和幂等键一起保存。
+刷新重试及切流、回滚都不会更换已有操作的后端；旧客户端普通待定键继续走旧路径，
+无法判断后端的旧手动灰度记录先阻止重试，等待核对结果。受控验收也可在专用页面
+URL 使用 `?comment_worker_canary=1`。
+
 **最终后端目标（未上线）：** 保留 Vercel 前端 + Gateway + Core Workers /
 Durable Objects + 现有 MongoDB + R2 + 原生 Cron；保留登录、OAuth、
 Second Brain MCP 和 AI，移除 Cloud Run/容器。未完成认证、MCP、个人
