@@ -1,9 +1,17 @@
 import { fetchClient } from './core';
 
-type PendingComment = { key: string; workerCanary: boolean };
+type CommentRoute = 'legacy' | 'worker';
+type PendingComment = {
+  version: 2;
+  key: string;
+  workerCanary: boolean;
+  route: CommentRoute;
+};
 const pendingKeys = new Map<string, PendingComment>();
 const inFlight = new Map<string, Promise<unknown>>();
 const completedKeys = new Set<string>();
+const UNKNOWN_ROUTE =
+  'Previous comment routing cannot be determined. Check the thread before starting a new operation.';
 
 function storage(): Storage | null {
   try {
@@ -13,7 +21,50 @@ function storage(): Storage | null {
   }
 }
 
-/** Keep an uncertain operation's key across retries; never retry a write automatically. */
+function canaryRequested(actorId: string): boolean {
+  try {
+    return (
+      !localStorage.getItem('googleInfo') &&
+      (storage()?.getItem('orion:comment-worker-canary:' + actorId) === '1' ||
+        new URLSearchParams(window.location.search).get('comment_worker_canary') === '1')
+    );
+  } catch {
+    return false;
+  }
+}
+
+function savedOperation(slot: string): PendingComment | undefined {
+  let saved: string | null = null;
+  try {
+    saved = storage()?.getItem(slot) ?? null;
+  } catch {
+    // An in-memory pending operation still works when storage is blocked.
+  }
+  if (!saved) return;
+  let record;
+  try {
+    record = JSON.parse(saved);
+  } catch {
+    throw new Error(UNKNOWN_ROUTE);
+  }
+  if (
+    !record ||
+    typeof record.key !== 'string' ||
+    !/^[a-f0-9-]{36}$/i.test(record.key) ||
+    typeof record.workerCanary !== 'boolean'
+  )
+    throw new Error(UNKNOWN_ROUTE);
+  if (completedKeys.has(record.key)) return;
+  if (record.version === 2 && ['legacy', 'worker'].includes(record.route)) return record;
+  // Normal v1 requests never opted into Worker. Never renegotiate their keys.
+  if (record.version === undefined && record.workerCanary === false) {
+    return { version: 2, key: record.key, workerCanary: false, route: 'legacy' };
+  }
+  // A v1 manual canary has no recorded backend; guessing could duplicate a write.
+  throw new Error(UNKNOWN_ROUTE);
+}
+
+/** Retain both backend and key after uncertain outcomes; never auto-retry POST. */
 export async function mutateComment<T>(
   actorId: string,
   endpoint: string,
@@ -30,57 +81,48 @@ export async function mutateComment<T>(
   const active = inFlight.get(slot);
   if (active) return active as Promise<T>;
 
-  let workerCanary = false;
-  try {
-    workerCanary =
-      storage()?.getItem('orion:comment-worker-canary:' + actorId) === '1' &&
-      !localStorage.getItem('googleInfo');
-  } catch {
-    // Opt-in is disabled when browser preferences cannot be read.
-  }
-  let pending = pendingKeys.get(slot);
-  if (!pending) {
-    try {
-      const saved = storage()?.getItem(slot);
-      const record = saved ? JSON.parse(saved) : null;
-      if (
-        record &&
-        /^[a-f0-9-]{36}$/i.test(record.key) &&
-        typeof record.workerCanary === 'boolean' &&
-        !completedKeys.has(record.key)
-      )
-        pending = record;
-    } catch {
-      // Keep retries stable in memory if browser storage is unavailable.
+  const operation = (async () => {
+    const workerCanary = canaryRequested(actorId);
+    let pending = pendingKeys.get(slot) ?? savedOperation(slot);
+    if (pending && pending.workerCanary !== workerCanary) {
+      throw new Error(
+        'Previous comment outcome is unknown. Restore the original comment routing before retrying.'
+      );
     }
-    pending ??= { key: crypto.randomUUID(), workerCanary };
+    if (!pending) {
+      // This read has no side effects. Failure blocks the write, rather than
+      // guessing a backend. Only new operations negotiate a route.
+      const policy = await fetchClient<{ version: number; route: CommentRoute }>(
+        '/comments/write-policy',
+        { headers: workerCanary ? { 'x-orion-comment-write-canary': '1' } : {} }
+      );
+      if (policy?.version !== 2 || !['legacy', 'worker'].includes(policy.route)) {
+        throw new Error('Comment routing unavailable. Try again before sending.');
+      }
+      pending = { version: 2, key: crypto.randomUUID(), workerCanary, route: policy.route };
+    }
     pendingKeys.set(slot, pending);
     try {
       storage()?.setItem(slot, JSON.stringify(pending));
     } catch {
-      // No comment text or user data is stored, only the digest and UUID.
+      // Only the digest, UUID and routing metadata are stored; never comment text.
     }
-  }
-  if (pending.workerCanary !== workerCanary)
-    throw new Error(
-      'Previous comment outcome is unknown. Restore the original comment routing before retrying.'
-    );
-  const operationKey = pending.key;
-  const operation = (async () => {
-    const headers: Record<string, string> = { 'Idempotency-Key': operationKey };
-    // Google-only identity is still owned by Cloud Run. Never strip its auth
-    // carrier to force a Worker path. The server gate remains authoritative.
+    const headers: Record<string, string> = {
+      'Idempotency-Key': pending.key,
+      'x-orion-comment-write-route': pending.route
+    };
     if (pending.workerCanary) headers['x-orion-comment-write-canary'] = '1';
     const result = await fetchClient<T>(endpoint, { method: 'POST', body, headers });
     pendingKeys.delete(slot);
-    completedKeys.add(operationKey);
+    completedKeys.add(pending.key);
     try {
       storage()?.removeItem(slot);
     } catch {
-      // A stale stored key must not replay a confirmed operation in this page.
+      // completedKeys prevents replay of a stale record in this page.
     }
     return result;
   })();
+  // Includes negotiation, so concurrent submissions share the GET and the POST.
   inFlight.set(slot, operation);
   try {
     return await operation;
